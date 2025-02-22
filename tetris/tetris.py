@@ -246,27 +246,53 @@ class Particle:
         """
         pygame.draw.rect(screen, self.color, (int(self.x), int(self.y), int(self.size), int(self.size)))
 
+
+class ParticlePool:
+    def __init__(self, max_particles: int):
+        self.max_particles = max_particles
+        self.pool = [Particle(0, 0, (0, 0, 0)) for _ in range(max_particles)]
+        self.available = list(self.pool)
+
+    def get_particle(self, x: int, y: int, color: Tuple[int, int, int]) -> Optional[Particle]:
+        if self.available:
+            particle = self.available.pop()
+            particle.x = x
+            particle.y = y
+            particle.color = color
+            particle.size = random.randint(6, 12)
+            particle.speed_x = random.uniform(-3, 3)
+            particle.speed_y = random.uniform(-7, -2)
+            particle.lifetime = random.randint(30, 60)
+            particle.original_color = color
+            particle.fade_speed = random.uniform(0.02, 0.05)
+            return particle
+        return None
+
+    def return_particle(self, particle: Particle) -> None:
+        self.available.append(particle)
+
 class ParticleSystem:
-    def __init__(self):
+    def __init__(self, particle_pool: ParticlePool):
         self.particles = []
+        self.particle_pool = particle_pool
 
     def add_particles(self, x: int, y: int, color: Tuple[int, int, int], count: int = 30) -> None:
-        """创建一组粒子"""
         for _ in range(count):
-            particle = Particle(x, y, color)
-            self.particles.append(particle)
+            particle = self.particle_pool.get_particle(x, y, color)
+            if particle:
+                self.particles.append(particle)
 
     def update(self) -> None:
-        """更新所有粒子的状态"""
         for particle in self.particles[:]:
             particle.update()
             if particle.lifetime <= 0:
                 self.particles.remove(particle)
+                self.particle_pool.return_particle(particle)
 
     def draw(self, screen: pygame.Surface) -> None:
-        """绘制所有粒子"""
         for particle in self.particles:
             particle.draw(screen)
+
 
 class GameRenderer:
     """
@@ -512,7 +538,10 @@ class TetrisGame:
         # 加载爆炸音效
         self.explosion_sound = pygame.mixer.Sound(os.path.join("sounds", "explosion.wav"))
 
-        self.particle_system = ParticleSystem()  # 初始化粒子系统
+        # 初始化粒子对象池
+        self.particle_pool = ParticlePool(max_particles=1000)  # 根据需要调整最大粒子数
+        self.particle_system = ParticleSystem(self.particle_pool)
+
         # 初始化 InputHandler
         self.input_handler = InputHandler(self)
 
@@ -599,7 +628,6 @@ class TetrisGame:
                 self._handle_piece_landed()
 
     def _handle_piece_landed(self) -> None:
-        """处理方块落地的情况"""
         self.game_board.merge_piece(self.current_tetromino)
         self.cleared_lines = self.game_board.clear_lines()
         if self.cleared_lines:
@@ -623,19 +651,18 @@ class TetrisGame:
             if not self.new_piece():
                 # 游戏结束，设置游戏状态为 GAME_OVER
                 self.game_state = GameState.GAME_OVER
-        self.last_fall_time = pygame.time.get_ticks()
+        self.last_fall_time = pygame.time.get_ticks()    
+    
+    
     
     def _update_explosion_particles(self) -> None:
         """
         更新和移除爆炸粒子。
         """
-        for particle in self.explosion_particles[:]:
-            particle.update()
-            if particle.lifetime <= 0:
-                self.explosion_particles.remove(particle)
+        self.particle_system.update()
+
 
     def _render_game(self) -> None:
-        """渲染游戏界面"""
         self.renderer.screen.fill(self.renderer.background_color)
         self.renderer.draw_grid()
         self.renderer.draw_board(self.game_board)
@@ -723,6 +750,8 @@ class TetrisGame:
         pygame.quit()
 
 
+        # 清理粒子池
+        self.particle_pool = None
 
 
 if __name__ == "__main__":
