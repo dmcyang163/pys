@@ -647,13 +647,14 @@ class TetrisGame:
                             self.running = False
                             waiting_for_restart = False
                         if event.type == pygame.KEYDOWN:
-                            if event.key == pygame.K_r:
+                            key = pygame.key.name(event.key).lower()  # 将按键值转换为小写
+                            if key == 'r':
                                 # 重新初始化游戏
                                 self.__init__()
                                 waiting_for_restart = False
                                 self.game_state = GameState.PLAYING
                                 self.new_piece()
-                            elif event.key == pygame.K_q:
+                            elif key == 'q':
                                 # 退出游戏
                                 self.running = False
                                 waiting_for_restart = False
