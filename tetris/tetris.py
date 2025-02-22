@@ -11,7 +11,7 @@ class GameConfig:
     SCREEN_HEIGHT = 600
     BLOCK_SIZE = 30
     FALL_SPEED = 1.5
-    FAST_FALL_SPEED = 21.0
+    FAST_FALL_SPEED = 15.0
     COLORS = []
     SHAPES = [
         [[1, 1, 1, 1]],
@@ -253,7 +253,7 @@ class GameRenderer:
         self.config = config
         self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
         pygame.display.set_caption("俄罗斯方块 - 分数显示版")
-        self.font = pygame.font.Font("MI_LanTing_Regular.ttf", int(config.SCREEN_WIDTH * 0.08))
+        self.font = pygame.font.Font(os.path.join("fonts", "MI_LanTing_Regular.ttf"), int(config.SCREEN_WIDTH * 0.08))
         self.block_surface = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), pygame.SRCALPHA)  # 创建一个 block_surface
 
     def draw_block(self, x: int, y: int, color: tuple[int, int, int], alpha: int = 255):
@@ -406,11 +406,11 @@ class TetrisGame:
         self.is_clearing = False  # 是否正在清除动画
         self.explosion_particles = []  # 存储爆炸粒子
 
-        pygame.mixer.music.load('tetris_music.mp3')
+        pygame.mixer.music.load(os.path.join("sounds", "tetris_music.mp3"))
         pygame.mixer.music.play(-1)
 
         # 加载爆炸音效
-        self.explosion_sound = pygame.mixer.Sound("explosion.wav")
+        self.explosion_sound = pygame.mixer.Sound(os.path.join("sounds", "explosion.wav"))
 
     def _create_new_piece(self) -> Tetromino:
         """
