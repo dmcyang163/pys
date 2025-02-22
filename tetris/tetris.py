@@ -448,16 +448,30 @@ class InputHandler:
         self.game = game
 
     def handle_input(self) -> bool:
+        """
+        处理输入事件。
+        返回一个布尔值，表示是否继续运行游戏。
+        """
+        if self.game.game_state == GameState.GAME_OVER:
+            pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.TEXTINPUT])  # 只允许处理这些事件
+        else:
+            pygame.event.set_allowed(None)  # 允许所有事件
+            
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return False
+                return False  # 退出游戏
+
             if self.game.game_state == GameState.PLAYING:
                 self._handle_playing_event(event)
             elif self.game.game_state == GameState.GAME_OVER:
                 self._handle_game_over_event(event)
-        return True
+
+        return True  # 继续运行游戏
 
     def _handle_playing_event(self, event) -> None:
+        """
+        处理游戏进行中的事件。
+        """
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 self.game.left_key_pressed = True
@@ -477,6 +491,9 @@ class InputHandler:
                 self.game.down_key_pressed = False
 
     def _handle_rotate(self) -> None:
+        """
+        处理方块的旋转。
+        """
         self.game.current_tetromino.rotate()
         if self.game.game_board.check_collision(
             self.game.current_tetromino,
@@ -488,22 +505,39 @@ class InputHandler:
                 self.game.current_tetromino.rotate()
 
     def _handle_game_over_event(self, event) -> None:
+        """
+        处理游戏结束时的输入事件。
+        """
         if event.type == pygame.KEYDOWN:
-            key = pygame.key.name(event.key).lower()
-            if key in ['r', 'ｒ']:
-                self.game.__init__()
-                self.game.game_state = GameState.PLAYING
-                self.game.new_piece()
-            elif key in ['q', 'ｑ']:
-                self.game.running = False
+            self._handle_game_over_key(event.key)
         elif event.type == pygame.TEXTINPUT:
-            text = event.text.lower()
-            if text in ['r', 'ｒ']:
-                self.game.__init__()
-                self.game.game_state = GameState.PLAYING
-                self.game.new_piece()
-            elif text in ['q', 'ｑ']:
-                self.game.running = False
+            self._handle_game_over_text(event.text)
+
+    def _handle_game_over_key(self, key) -> None:
+        """
+        处理游戏结束时的按键事件。
+        """
+        key_name = pygame.key.name(key).lower()
+        if key_name in ['r', 'ｒ']:
+            self.game.__init__()
+            self.game.game_state = GameState.PLAYING
+            self.game.new_piece()
+        elif key_name in ['q', 'ｑ']:
+            self.game.running = False
+
+    def _handle_game_over_text(self, text) -> None:
+        """
+        处理游戏结束时的文本输入事件。
+        """
+        text = text.lower()
+        if text in ['r', 'ｒ']:
+            self.game.__init__()
+            self.game.game_state = GameState.PLAYING
+            self.game.new_piece()
+        elif text in ['q', 'ｑ']:
+            self.game.running = False
+
+
 class TetrisGame:
     """
     主游戏类，包含游戏循环、输入处理和游戏逻辑。
