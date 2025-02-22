@@ -202,6 +202,7 @@ class GameRenderer:
         self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
         pygame.display.set_caption("俄罗斯方块 - 分数显示版")
         self.font = pygame.font.Font("MI_LanTing_Regular.ttf", int(config.SCREEN_WIDTH * 0.08))
+        self.block_surface = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), pygame.SRCALPHA)  # 创建一个 block_surface
 
     def draw_block(self, x: int, y: int, color: tuple[int, int, int], alpha: int = 255):
         """
@@ -213,9 +214,9 @@ class GameRenderer:
             color (tuple[int, int, int]): 方块的颜色 (RGB)。
             alpha (int, optional): 方块的透明度 (0-255)。默认为 255 (不透明)。
         """
-        s = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), pygame.SRCALPHA)
-        pygame.draw.rect(s, color + (alpha,), (0, 0, self.config.BLOCK_SIZE, self.config.BLOCK_SIZE))
-        self.screen.blit(s, (x * self.config.BLOCK_SIZE, y * self.config.BLOCK_SIZE))
+        self.block_surface.fill((0, 0, 0, 0))  # 清空 surface
+        pygame.draw.rect(self.block_surface, color + (alpha,), (0, 0, self.config.BLOCK_SIZE, self.config.BLOCK_SIZE))
+        self.screen.blit(self.block_surface, (x * self.config.BLOCK_SIZE, y * self.config.BLOCK_SIZE))
         pygame.draw.rect(self.screen, (50, 50, 50), (x * self.config.BLOCK_SIZE,
                          y * self.config.BLOCK_SIZE,
                          self.config.BLOCK_SIZE,
@@ -307,6 +308,11 @@ class TetrisGame:
         初始化游戏。
         """
         pygame.init()
+        pygame.display.init()
+        if pygame.display.get_driver() == "directx":
+            pygame.display.quit()
+            os.environ['SDL_VIDEODRIVER'] = 'windib'
+            pygame.display.init()
         self.config = GameConfig()
         self.board = Board(self.config)
         self.renderer = GameRenderer(self.config)
@@ -392,13 +398,6 @@ class TetrisGame:
         self.last_frame_time = pygame.time.get_ticks()
         self.last_fall_time = pygame.time.get_ticks()  # 初始化 last_fall_time
 
-        # 尝试禁用/启用硬件加速
-        pygame.display.init()
-        if pygame.display.get_driver() == "directx":
-            pygame.display.quit()
-            os.environ['SDL_VIDEODRIVER'] = 'windib'
-            pygame.display.init()
-
         while running:
             current_time = pygame.time.get_ticks()
             running = self.handle_input()
@@ -467,11 +466,10 @@ class TetrisGame:
             print(f"FPS: {clock.get_fps()}")
 
             # 限制帧率为 30 FPS
-            clock.tick(30)  
+            clock.tick(30)
 
         pygame.mixer.music.stop()
         pygame.quit()
-
 
 
 if __name__ == "__main__":
