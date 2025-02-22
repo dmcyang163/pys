@@ -439,10 +439,106 @@ class InputHandler:
             if event.key == pygame.K_DOWN:
                 self.game.down_key_pressed = False
 
+
+class InputHandler:
+    """
+    处理用户输入事件，包括键盘输入和输入法输入。
+    """
+
+    def __init__(self, game):
+        """
+        初始化 InputHandler。
+
+        Args:
+            game (TetrisGame): 主游戏对象。
+        """
+        self.game = game
+
+    def handle_input(self) -> bool:
+        """
+        处理用户输入事件。
+
+        Returns:
+            bool: 如果游戏应该继续运行，则返回 True，否则返回 False (退出游戏)。
+        """
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if self.game.game_state == GameState.PLAYING:
+                self._handle_playing_event(event)
+            elif self.game.game_state == GameState.GAME_OVER:
+                self._handle_game_over_event(event)
+        return True
+
+    def _handle_playing_event(self, event) -> None:
+        """
+        处理游戏进行中的输入事件。
+
+        Args:
+            event: Pygame 事件对象。
+        """
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                self.game.left_key_pressed = True
+            if event.key == pygame.K_RIGHT:
+                self.game.right_key_pressed = True
+            if event.key == pygame.K_DOWN:
+                self.game.down_key_pressed = True
+            if event.key == pygame.K_UP:
+                self.game.current_tetromino.rotate()
+                if self.game.game_board.check_collision(
+                    self.game.current_tetromino,
+                    self.game.current_tetromino.x,
+                    self.game.current_tetromino.y
+                ):
+                    # 如果旋转后发生碰撞，则撤销旋转
+                    for _ in range(3):
+                        self.game.current_tetromino.rotate()
+
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT:
+                self.game.left_key_pressed = False
+            if event.key == pygame.K_RIGHT:
+                self.game.right_key_pressed = False
+            if event.key == pygame.K_DOWN:
+                self.game.down_key_pressed = False
+
+    def _handle_game_over_event(self, event) -> None:
+        """
+        处理游戏结束时的输入事件。
+
+        Args:
+            event: Pygame 事件对象。
+        """
+        if event.type == pygame.KEYDOWN:
+            key = pygame.key.name(event.key).lower()  # 获取按键名称并转换为小写
+            print(f"Key pressed: {key}")  # 打印按下的键
+            if key == 'r':
+                # 重新初始化游戏
+                self.game.__init__()
+                self.game.game_state = GameState.PLAYING
+                self.game.new_piece()
+            elif key == 'q':
+                # 退出游戏
+                self.game.running = False
+
+        if event.type == pygame.TEXTINPUT:
+            text = event.text.lower()  # 获取输入文本并转换为小写
+            print(f"Text input: {text}")  # 打印输入文本
+            if text == 'r' or text == 'ｒ':  # 处理全角字符
+                # 重新初始化游戏
+                self.game.__init__()
+                self.game.game_state = GameState.PLAYING
+                self.game.new_piece()
+            elif text == 'q' or text == 'ｑ':  # 处理全角字符
+                # 退出游戏
+                self.game.running = False
+
 class TetrisGame:
     """
     主游戏类，包含游戏循环、输入处理和游戏逻辑。
     """
+
     def __init__(self):
         """
         初始化游戏。
@@ -482,7 +578,6 @@ class TetrisGame:
         # 初始化 InputHandler
         self.input_handler = InputHandler(self)
 
-
     def _create_new_piece(self) -> Tetromino:
         """
         创建一个新的俄罗斯方块，并将其放置在面板顶部。
@@ -493,38 +588,6 @@ class TetrisGame:
         tetromino = Tetromino(self.config)
         return tetromino
 
-    def handle_input(self) -> bool:
-        """
-        处理用户输入事件。
-
-        Returns:
-            bool: 如果游戏应该继续运行，则返回 True，否则返回 False (退出游戏)。
-        """
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return False
-            if self.game_state == GameState.PLAYING:
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_LEFT:
-                        self.left_key_pressed = True
-                    if event.key == pygame.K_RIGHT:
-                        self.right_key_pressed = True
-                    if event.key == pygame.K_DOWN:
-                        self.down_key_pressed = True
-                    if event.key == pygame.K_UP:
-                        self.current_tetromino.rotate()
-                        if self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x, self.current_tetromino.y):
-                            # 如果旋转后发生碰撞，则撤销旋转
-                            for _ in range(3):
-                                self.current_tetromino.rotate()
-                if event.type == pygame.KEYUP:
-                    if event.key == pygame.K_LEFT:
-                        self.left_key_pressed = False
-                    if event.key == pygame.K_RIGHT:
-                        self.right_key_pressed = False
-                    if event.key == pygame.K_DOWN:
-                        self.down_key_pressed = False
-        return True    
     def new_piece(self) -> bool:
         """
         创建一个新的俄罗斯方块，并将其放置在面板顶部。
