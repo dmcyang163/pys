@@ -39,7 +39,30 @@ class TetrisGame:
         self.explosion_sound = pygame.mixer.Sound(os.path.join("sounds", "explosion.wav"))
         self.particle_pool = ParticlePool(max_particles=1000)
         self.particle_system = ParticleSystem(self.particle_pool)
+
+        # 初始化手柄
+        self.joystick = None
+        self._init_joystick()
+
         self.input_handler = InputHandler(self)
+    def _init_joystick(self):
+            """
+            初始化手柄。
+            """
+            pygame.joystick.init()
+            if pygame.joystick.get_count() > 0:
+                self.joystick = pygame.joystick.Joystick(0)  # 使用第一个手柄
+                self.joystick.init()
+                print(f"手柄已连接: {self.joystick.get_name()}")
+                print(f"摇杆数量: {self.joystick.get_numaxes()}")  # 打印摇杆数量
+                print(f"按钮数量: {self.joystick.get_numbuttons()}")  # 打印按钮数量
+                for i in range(self.joystick.get_numbuttons()):
+                    print(f"按钮 {i}: {self.joystick.get_button(i)}")
+
+                for i in range(self.joystick.get_numaxes()):
+                    print(f"摇杆 {i}: {self.joystick.get_axis(i)}")
+            else:
+                print("未检测到手柄。")
 
     def _create_new_piece(self) -> Tetromino:
         return Tetromino(self.config)
