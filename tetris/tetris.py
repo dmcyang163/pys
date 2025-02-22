@@ -187,6 +187,45 @@ class ScoreManager:
             with open("high_score.txt", "w") as f:
                 f.write(str(self.high_score))
 
+class Particle:
+    """
+    表示爆炸效果中的一个粒子。
+    """
+    def __init__(self, x: int, y: int, color: tuple[int, int, int]):
+        """
+        初始化粒子。
+
+        Args:
+            x (int): 粒子的 X 坐标。
+            y (int): 粒子的 Y 坐标。
+            color (tuple[int, int, int]): 粒子的颜色 (RGB)。
+        """
+        self.x = x
+        self.y = y
+        self.color = color
+        self.size = random.randint(4, 8)
+        self.speed_x = random.uniform(-2, 2)
+        self.speed_y = random.uniform(-5, -1)
+        self.lifetime = 50  # 粒子生命周期（帧数）
+
+    def update(self):
+        """
+        更新粒子的位置和生命周期。
+        """
+        self.x += self.speed_x
+        self.y += self.speed_y
+        self.speed_y += 0.1  # 重力
+        self.lifetime -= 1
+
+    def draw(self, screen: pygame.Surface):
+        """
+        在屏幕上绘制粒子。
+
+        Args:
+            screen (pygame.Surface): 要绘制的屏幕 Surface 对象。
+        """
+        pygame.draw.rect(screen, self.color, (int(self.x), int(self.y), self.size, self.size))
+
 class GameRenderer:
     """
     负责渲染游戏界面，包括面板、方块、网格和得分。
@@ -284,20 +323,37 @@ class GameRenderer:
                     block_y = config.PREVIEW_Y // config.BLOCK_SIZE + y
                     self.draw_block(block_x, block_y, piece.color)
 
-    def draw_clearing_animation(self, board: Board, lines_to_clear: list[int], animation_progress: float):
+    def draw_explosion(self, x: int, y: int, color: tuple[int, int, int], explosion_particles: list[Particle]):
         """
-        绘制指定行的清除动画。
+        在指定位置创建爆炸效果。
+
+        Args:
+            x (int): 爆炸中心的 X 坐标。
+            y (int): 爆炸中心的 Y 坐标。
+            color (tuple[int, int, int]): 爆炸粒子的颜色 (RGB)。
+            explosion_particles (list[Particle]): 存储爆炸粒子的列表。
+        """
+        num_particles = 20  # 爆炸粒子数量
+        for _ in range(num_particles):
+            particle = Particle(x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                                y * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                                color)
+            explosion_particles.append(particle)
+
+    def draw_clearing_animation(self, board: Board, lines_to_clear: list[int], animation_progress: float, explosion_particles: list[Particle]):
+        """
+        绘制指定行的清除动画（爆炸效果）。
 
         Args:
             board (Board): 游戏面板对象。
             lines_to_clear (list[int]): 要清除的行索引列表。
             animation_progress (float): 动画进度 (0.0 到 1.0)。
+            explosion_particles (list[Particle]): 存储爆炸粒子的列表。
         """
-        alpha = int(255 * (1 - animation_progress))  # 透明度从 255 降到 0
         for i in lines_to_clear:
             for x in range(len(board.grid[0])):
                 if board.grid[i][x]:
-                    self.draw_block(x, i, board.grid[i][x], alpha)
+                    self.draw_explosion(x, i, board.grid[i][x], explosion_particles)
 
 class TetrisGame:
     """
@@ -329,6 +385,7 @@ class TetrisGame:
         self.cleared_lines = []  # 需要清除的行
         self.clearing_animation_progress = 0.0  # 清除动画的进度 (0.0 到 1.0)
         self.is_clearing = False  # 是否正在清除动画
+        self.explosion_particles = []  # 存储爆炸粒子
 
         pygame.mixer.music.load('tetris_music.mp3')
         pygame.mixer.music.play(-1)
@@ -405,10 +462,12 @@ class TetrisGame:
             if self.is_clearing:
                 # 清除动画进行中
                 self.clearing_animation_progress = min(1.0, self.clearing_animation_progress + (current_time - self.last_frame_time) / animation_duration)
+                self.renderer.draw_clearing_animation(self.board, self.cleared_lines, self.clearing_animation_progress, self.explosion_particles)
                 if self.clearing_animation_progress >= 1.0:
                     # 动画完成，移除行并创建新方块
                     self.board.remove_lines(self.cleared_lines)
                     self.is_clearing = False
+                    self.explosion_particles = []  # 清空爆炸粒子
                     if not self.new_piece():
                         running = False  # Game over
             else:
@@ -442,17 +501,24 @@ class TetrisGame:
                         self.score_manager.score += len(self.cleared_lines) * 100
                         self.score_manager.update_high_score()
 
+            # 更新和绘制爆炸粒子
+            for particle in self.explosion_particles[:]:
+                particle.update()
+                if particle.lifetime <= 0:
+                    self.explosion_particles.remove(particle)
+
             # 渲染
             self.renderer.screen.fill((30, 30, 30))
             self.renderer.draw_grid()
             self.renderer.draw_board(self.board)
 
-            if self.is_clearing:
-                # 绘制清除动画
-                self.renderer.draw_clearing_animation(self.board, self.cleared_lines, self.clearing_animation_progress)
-            else:
+            if not self.is_clearing:
                 # 绘制当前方块
                 self.renderer.draw_piece(self.current_piece)
+
+            # 绘制爆炸粒子
+            for particle in self.explosion_particles:
+                particle.draw(self.renderer.screen)
 
             self.renderer.draw_next_piece(self.next_piece, self.config)
             self.renderer.draw_score(self.score_manager)
