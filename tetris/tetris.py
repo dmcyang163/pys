@@ -11,7 +11,7 @@ class GameConfig:
     SCREEN_HEIGHT = 600
     BLOCK_SIZE = 30
     FALL_SPEED = 1.5
-    FAST_FALL_SPEED = 15.0
+    FAST_FALL_SPEED = 21.0
     COLORS = []
     SHAPES = [
         [[1, 1, 1, 1]],
@@ -203,19 +203,32 @@ class Particle:
         self.x = x
         self.y = y
         self.color = color
-        self.size = random.randint(4, 8)
-        self.speed_x = random.uniform(-2, 2)
-        self.speed_y = random.uniform(-5, -1)
-        self.lifetime = 50  # 粒子生命周期（帧数）
+        self.size = random.randint(6, 12)  # 粒子大小范围
+        self.speed_x = random.uniform(-3, 3)  # 粒子水平速度范围
+        self.speed_y = random.uniform(-7, -2)  # 粒子垂直速度范围
+        self.lifetime = random.randint(30, 60)  # 粒子生命周期范围
+        self.original_color = color  # 记录原始颜色
+        self.fade_speed = random.uniform(0.02, 0.05)  # 颜色淡化速度
 
     def update(self):
         """
-        更新粒子的位置和生命周期。
+        更新粒子的位置、大小、颜色和生命周期。
         """
         self.x += self.speed_x
         self.y += self.speed_y
         self.speed_y += 0.1  # 重力
         self.lifetime -= 1
+
+        # 粒子大小逐渐缩小
+        self.size = max(1, self.size - 0.2)
+
+        # 粒子颜色逐渐淡化
+        r, g, b = self.color
+        fade_amount = int(255 * self.fade_speed)
+        r = max(0, r - fade_amount)
+        g = max(0, g - fade_amount)
+        b = max(0, b - fade_amount)
+        self.color = (r, g, b)
 
     def draw(self, screen: pygame.Surface):
         """
@@ -224,7 +237,7 @@ class Particle:
         Args:
             screen (pygame.Surface): 要绘制的屏幕 Surface 对象。
         """
-        pygame.draw.rect(screen, self.color, (int(self.x), int(self.y), self.size, self.size))
+        pygame.draw.rect(screen, self.color, (int(self.x), int(self.y), int(self.size), int(self.size)))
 
 class GameRenderer:
     """
@@ -333,12 +346,18 @@ class GameRenderer:
             color (tuple[int, int, int]): 爆炸粒子的颜色 (RGB)。
             explosion_particles (list[Particle]): 存储爆炸粒子的列表。
         """
-        num_particles = 20  # 爆炸粒子数量
+        num_particles = 30  # 增加粒子数量
         for _ in range(num_particles):
             particle = Particle(x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
                                 y * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
                                 color)
             explosion_particles.append(particle)
+
+        # 添加闪光效果
+        pygame.draw.circle(self.screen, (255, 255, 255),
+                           (x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                            y * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2),
+                           self.config.BLOCK_SIZE // 2)
 
     def draw_clearing_animation(self, board: Board, lines_to_clear: list[int], animation_progress: float, explosion_particles: list[Particle]):
         """
@@ -389,6 +408,9 @@ class TetrisGame:
 
         pygame.mixer.music.load('tetris_music.mp3')
         pygame.mixer.music.play(-1)
+
+        # 加载爆炸音效
+        self.explosion_sound = pygame.mixer.Sound("explosion.wav")
 
     def _create_new_piece(self) -> Tetromino:
         """
@@ -494,6 +516,9 @@ class TetrisGame:
                         if self.cleared_lines:
                             self.is_clearing = True  # 启动清除动画
                             self.clearing_animation_progress = 0.0  # 重置动画进度
+
+                            # 播放爆炸音效
+                            self.explosion_sound.play()
                         else:
                             if not self.new_piece():
                                 running = False  # Game over
@@ -504,7 +529,7 @@ class TetrisGame:
             # 更新和绘制爆炸粒子
             for particle in self.explosion_particles[:]:
                 particle.update()
-                if particle.lifetime <= 0:
+                if particle.lifetime <= 0 or particle.size <= 1:  # 添加大小判断
                     self.explosion_particles.remove(particle)
 
             # 渲染
