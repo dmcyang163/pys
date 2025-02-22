@@ -477,6 +477,7 @@ class InputHandler:
         Args:
             event: Pygame 事件对象。
         """
+        # 处理上下左右键
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 self.game.left_key_pressed = True
@@ -510,6 +511,7 @@ class InputHandler:
         Args:
             event: Pygame 事件对象。
         """
+        # 处理 R 和 Q 键（直接按键）
         if event.type == pygame.KEYDOWN:
             key = pygame.key.name(event.key).lower()  # 获取按键名称并转换为小写
             print(f"Key pressed: {key}")  # 打印按下的键
@@ -522,6 +524,7 @@ class InputHandler:
                 # 退出游戏
                 self.game.running = False
 
+        # 处理 R 和 Q 键（输入法输入）
         if event.type == pygame.TEXTINPUT:
             text = event.text.lower()  # 获取输入文本并转换为小写
             print(f"Text input: {text}")  # 打印输入文本
@@ -533,7 +536,6 @@ class InputHandler:
             elif text == 'q' or text == 'ｑ':  # 处理半角和全角字符
                 # 退出游戏
                 self.game.running = False
-
 
 class TetrisGame:
     """
