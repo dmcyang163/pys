@@ -406,6 +406,7 @@ class TetrisGame:
         self.is_clearing = False  # 是否正在清除动画
         self.explosion_particles = []  # 存储爆炸粒子
 
+        # 修改这里
         pygame.mixer.music.load(os.path.join("sounds", "tetris_music.mp3"))
         pygame.mixer.music.play(-1)
 
@@ -467,87 +468,146 @@ class TetrisGame:
         self.next_piece = self._create_new_piece()
         return not self.board.check_collision(self.current_piece, self.current_piece.x, self.current_piece.y)
 
+    def _handle_clearing_animation(self, current_time: int, animation_duration: int) -> None:
+        """
+        处理清除动画。
+
+        Args:
+            current_time (int): 当前时间（毫秒）。
+            animation_duration (int): 动画持续时间（毫秒）。
+        """
+        self.clearing_animation_progress = min(1.0, self.clearing_animation_progress + (current_time - self.last_frame_time) / animation_duration)
+        self.renderer.draw_clearing_animation(self.board, self.cleared_lines, self.clearing_animation_progress, self.explosion_particles)
+        if self.clearing_animation_progress >= 1.0:
+            # 动画完成，移除行并创建新方块
+            self.board.remove_lines(self.cleared_lines)
+            self.is_clearing = False
+            self.explosion_particles = []  # 清空爆炸粒子
+            if not self.new_piece():
+                self.running = False  # Game over
+
+    def _handle_piece_movement(self, current_time: int) -> None:
+        """
+        处理方块的左右移动和下落。
+
+        Args:
+            current_time (int): 当前时间（毫秒）。
+        """
+        # 左右移动逻辑
+        if current_time - self.last_move_time > self.move_delay:
+            if self.left_key_pressed:
+                if not self.board.check_collision(self.current_piece, self.current_piece.x - 1, self.current_piece.y):
+                    self.current_piece.x -= 1
+                    self.last_move_time = current_time
+            if self.right_key_pressed:
+                if not self.board.check_collision(self.current_piece, self.current_piece.x + 1, self.current_piece.y):
+                    self.current_piece.x += 1
+                    self.last_move_time = current_time
+
+        # 下落逻辑
+        current_speed = self.config.FAST_FALL_SPEED if self.down_key_pressed else self.config.FALL_SPEED
+        if current_time - self.last_fall_time > 1000 / current_speed:
+            if not self.board.check_collision(self.current_piece, self.current_piece.x, self.current_piece.y + 1):
+                self.current_piece.y += 1
+                self.last_fall_time = current_time  # 更新 last_fall_time
+            else:
+                self._handle_piece_landed()
+
+    def _handle_piece_landed(self) -> None:
+        """
+        处理方块落地的情况。
+        """
+        self.board.merge_piece(self.current_piece)
+        
+        cleared_lines = self.board.clear_lines()  # 获取需要清除的行
+        while cleared_lines:  # 循环清除所有可清除的行
+            self.is_clearing = True  # 启动清除动画
+            self.clearing_animation_progress = 0.0  # 重置动画进度
+            self.cleared_lines = cleared_lines
+
+            # 播放爆炸音效
+            self.explosion_sound.play()
+
+            # 等待清除动画完成
+            animation_duration = 300
+            start_time = pygame.time.get_ticks()
+            while self.clearing_animation_progress < 1.0:
+                current_time = pygame.time.get_ticks()
+                self.clearing_animation_progress = min(1.0, (current_time - start_time) / animation_duration)
+                self.renderer.draw_clearing_animation(self.board, self.cleared_lines, self.clearing_animation_progress, self.explosion_particles)
+                self._update_explosion_particles()
+                self._render_game()
+                pygame.display.flip()
+                clock = pygame.time.Clock()
+                clock.tick(30)
+
+            self.board.remove_lines(self.cleared_lines)
+            self.score_manager.score += len(self.cleared_lines) * 100
+            self.score_manager.update_high_score()
+            self.is_clearing = False
+            self.explosion_particles = []  # 清空爆炸粒子
+
+            cleared_lines = self.board.clear_lines()  # 再次检查是否有新的行可以清除
+
+        if not self.new_piece():
+            self.running = False  # Game over
+
+
+    def _update_explosion_particles(self) -> None:
+        """
+        更新和移除爆炸粒子。
+        """
+        for particle in self.explosion_particles[:]:
+            particle.update()
+            if particle.lifetime <= 0 or particle.size <= 1:  # 添加大小判断
+                self.explosion_particles.remove(particle)
+
+    def _render_game(self) -> None:
+        """
+        渲染游戏界面。
+        """
+        self.renderer.screen.fill((30, 30, 30))
+        self.renderer.draw_grid()
+        self.renderer.draw_board(self.board)
+
+        if not self.is_clearing:
+            # 绘制当前方块
+            self.renderer.draw_piece(self.current_piece)
+
+        # 绘制爆炸粒子
+        for particle in self.explosion_particles:
+            particle.draw(self.renderer.screen)
+
+        self.renderer.draw_next_piece(self.next_piece, self.config)
+        self.renderer.draw_score(self.score_manager)
+        pygame.display.flip()
+
     def game_loop(self):
         """
         主游戏循环。
         """
-        running = True
+        self.running = True
         clock = pygame.time.Clock()
         animation_duration = 300  # 动画持续时间（毫秒）
         self.last_frame_time = pygame.time.get_ticks()
         self.last_fall_time = pygame.time.get_ticks()  # 初始化 last_fall_time
+        current_speed = self.config.FALL_SPEED  # 初始化 current_speed
 
-        while running:
+        while self.running:
             current_time = pygame.time.get_ticks()
-            running = self.handle_input()
+            self.running = self.handle_input()
 
             if self.is_clearing:
-                # 清除动画进行中
-                self.clearing_animation_progress = min(1.0, self.clearing_animation_progress + (current_time - self.last_frame_time) / animation_duration)
-                self.renderer.draw_clearing_animation(self.board, self.cleared_lines, self.clearing_animation_progress, self.explosion_particles)
-                if self.clearing_animation_progress >= 1.0:
-                    # 动画完成，移除行并创建新方块
-                    self.board.remove_lines(self.cleared_lines)
-                    self.is_clearing = False
-                    self.explosion_particles = []  # 清空爆炸粒子
-                    if not self.new_piece():
-                        running = False  # Game over
+                self._handle_clearing_animation(current_time, animation_duration)
             else:
-                # 左右移动逻辑
-                if current_time - self.last_move_time > self.move_delay:
-                    if self.left_key_pressed:
-                        if not self.board.check_collision(self.current_piece, self.current_piece.x - 1, self.current_piece.y):
-                            self.current_piece.x -= 1
-                            self.last_move_time = current_time
-                    if self.right_key_pressed:
-                        if not self.board.check_collision(self.current_piece, self.current_piece.x + 1, self.current_piece.y):
-                            self.current_piece.x += 1
-                            self.last_move_time = current_time
-
-                # 下落逻辑
-                current_speed = self.config.FAST_FALL_SPEED if self.down_key_pressed else self.config.FALL_SPEED
-                if current_time - self.last_fall_time > 1000 / current_speed:
-                    if not self.board.check_collision(self.current_piece, self.current_piece.x, self.current_piece.y + 1):
-                        self.current_piece.y += 1
-                        self.last_fall_time = current_time  # 更新 last_fall_time
-                    else:
-                        self.board.merge_piece(self.current_piece)
-                        self.cleared_lines = self.board.clear_lines()  # 获取需要清除的行
-                        if self.cleared_lines:
-                            self.is_clearing = True  # 启动清除动画
-                            self.clearing_animation_progress = 0.0  # 重置动画进度
-
-                            # 播放爆炸音效
-                            self.explosion_sound.play()
-                        else:
-                            if not self.new_piece():
-                                running = False  # Game over
-                        # self.last_fall_time = current_time  # 移除此行，因为它已经在上面更新了
-                        self.score_manager.score += len(self.cleared_lines) * 100
-                        self.score_manager.update_high_score()
+                self._handle_piece_movement(current_time)
+                current_speed = self.config.FAST_FALL_SPEED if self.down_key_pressed else self.config.FALL_SPEED  # 更新 current_speed
 
             # 更新和绘制爆炸粒子
-            for particle in self.explosion_particles[:]:
-                particle.update()
-                if particle.lifetime <= 0 or particle.size <= 1:  # 添加大小判断
-                    self.explosion_particles.remove(particle)
+            self._update_explosion_particles()
 
             # 渲染
-            self.renderer.screen.fill((30, 30, 30))
-            self.renderer.draw_grid()
-            self.renderer.draw_board(self.board)
-
-            if not self.is_clearing:
-                # 绘制当前方块
-                self.renderer.draw_piece(self.current_piece)
-
-            # 绘制爆炸粒子
-            for particle in self.explosion_particles:
-                particle.draw(self.renderer.screen)
-
-            self.renderer.draw_next_piece(self.next_piece, self.config)
-            self.renderer.draw_score(self.score_manager)
-            pygame.display.flip()
+            self._render_game()
 
             self.last_frame_time = current_time  # 记录当前帧的时间
 
@@ -561,6 +621,7 @@ class TetrisGame:
 
         pygame.mixer.music.stop()
         pygame.quit()
+
 
 
 if __name__ == "__main__":
