@@ -388,6 +388,57 @@ class GameState(Enum):
     PLAYING = 2
     GAME_OVER = 3
 
+class InputHandler:
+    def __init__(self, game):
+        self.game = game
+
+    def handle_input(self) -> bool:
+        """
+        处理用户输入事件。
+
+        Returns:
+            bool: 如果游戏应该继续运行，则返回 True，否则返回 False (退出游戏)。
+        """
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if self.game.game_state == GameState.PLAYING:
+                self._handle_key_event(event)
+        return True
+
+    def _handle_key_event(self, event) -> None:
+        """
+        处理键盘事件。
+
+        Args:
+            event: Pygame 事件对象。
+        """
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                self.game.left_key_pressed = True
+            if event.key == pygame.K_RIGHT:
+                self.game.right_key_pressed = True
+            if event.key == pygame.K_DOWN:
+                self.game.down_key_pressed = True
+            if event.key == pygame.K_UP:
+                self.game.current_tetromino.rotate()
+                if self.game.game_board.check_collision(
+                    self.game.current_tetromino,
+                    self.game.current_tetromino.x,
+                    self.game.current_tetromino.y
+                ):
+                    # 如果旋转后发生碰撞，则撤销旋转
+                    for _ in range(3):
+                        self.game.current_tetromino.rotate()
+
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT:
+                self.game.left_key_pressed = False
+            if event.key == pygame.K_RIGHT:
+                self.game.right_key_pressed = False
+            if event.key == pygame.K_DOWN:
+                self.game.down_key_pressed = False
+
 class TetrisGame:
     """
     主游戏类，包含游戏循环、输入处理和游戏逻辑。
@@ -427,6 +478,11 @@ class TetrisGame:
 
         # 加载爆炸音效
         self.explosion_sound = pygame.mixer.Sound(os.path.join("sounds", "explosion.wav"))
+
+        # 初始化 InputHandler
+        self.input_handler = InputHandler(self)
+
+
     def _create_new_piece(self) -> Tetromino:
         """
         创建一个新的俄罗斯方块，并将其放置在面板顶部。
@@ -605,7 +661,8 @@ class TetrisGame:
 
         while self.running:
             current_time = pygame.time.get_ticks()
-            self.running = self.handle_input()
+            # 使用 InputHandler 处理输入
+            self.running = self.input_handler.handle_input()
 
             if self.game_state == GameState.PLAYING:
                 if self.is_clearing:
