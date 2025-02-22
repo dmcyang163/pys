@@ -513,26 +513,27 @@ class InputHandler:
         if event.type == pygame.KEYDOWN:
             key = pygame.key.name(event.key).lower()  # 获取按键名称并转换为小写
             print(f"Key pressed: {key}")  # 打印按下的键
-            if key == 'r':
+            if key == 'r' or key == 'ｒ':  # 处理半角和全角字符
                 # 重新初始化游戏
                 self.game.__init__()
                 self.game.game_state = GameState.PLAYING
                 self.game.new_piece()
-            elif key == 'q':
+            elif key == 'q' or key == 'ｑ':  # 处理半角和全角字符
                 # 退出游戏
                 self.game.running = False
 
         if event.type == pygame.TEXTINPUT:
             text = event.text.lower()  # 获取输入文本并转换为小写
             print(f"Text input: {text}")  # 打印输入文本
-            if text == 'r' or text == 'ｒ':  # 处理全角字符
+            if text == 'r' or text == 'ｒ':  # 处理半角和全角字符
                 # 重新初始化游戏
                 self.game.__init__()
                 self.game.game_state = GameState.PLAYING
                 self.game.new_piece()
-            elif text == 'q' or text == 'ｑ':  # 处理全角字符
+            elif text == 'q' or text == 'ｑ':  # 处理半角和全角字符
                 # 退出游戏
                 self.game.running = False
+
 
 class TetrisGame:
     """
