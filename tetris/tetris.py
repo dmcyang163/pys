@@ -271,9 +271,11 @@ class ParticlePool:
     def return_particle(self, particle: Particle) -> None:
         self.available.append(particle)
 
+from collections import deque
+
 class ParticleSystem:
     def __init__(self, particle_pool: ParticlePool):
-        self.particles = []
+        self.particles = deque()  # 使用 deque 提高性能
         self.particle_pool = particle_pool
 
     def add_particles(self, x: int, y: int, color: Tuple[int, int, int], count: int = 30) -> None:
@@ -283,7 +285,7 @@ class ParticleSystem:
                 self.particles.append(particle)
 
     def update(self) -> None:
-        for particle in self.particles[:]:
+        for particle in list(self.particles):  # 使用 list 避免遍历时修改 deque
             particle.update()
             if particle.lifetime <= 0:
                 self.particles.remove(particle)
@@ -292,7 +294,6 @@ class ParticleSystem:
     def draw(self, screen: pygame.Surface) -> None:
         for particle in self.particles:
             particle.draw(screen)
-
 
 class GameRenderer:
     """
@@ -313,6 +314,8 @@ class GameRenderer:
         self.grid_line_color = config.GRID_LINE_COLOR # 使用常量
         self.background_color = config.BACKGROUND_COLOR # 使用常量
 
+        self.grid_surface = self._create_grid_surface()  # 预生成网格 Surface
+
     def draw_block(self, x: int, y: int, color: Tuple[int, int, int], alpha: int = 255) -> None:
         """
         在屏幕上绘制一个单独的方块，可以选择设置透明度。
@@ -325,11 +328,8 @@ class GameRenderer:
         """
         self.block_surface.fill((0, 0, 0, 0))  # 清空 surface
         pygame.draw.rect(self.block_surface, color + (alpha,), (0, 0, self.config.BLOCK_SIZE, self.config.BLOCK_SIZE))
+        pygame.draw.rect(self.block_surface, (50, 50, 50), (0, 0, self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), 1)  # 绘制边框
         self.screen.blit(self.block_surface, (x * self.config.BLOCK_SIZE, y * self.config.BLOCK_SIZE))
-        pygame.draw.rect(self.screen, (50, 50, 50), (x * self.config.BLOCK_SIZE,
-                         y * self.config.BLOCK_SIZE,
-                         self.config.BLOCK_SIZE,
-                         self.config.BLOCK_SIZE), 1)
 
     def draw_board(self, game_board: Board) -> None:
         """
@@ -355,14 +355,18 @@ class GameRenderer:
                 if cell:
                     self.draw_block(tetromino.x + x, tetromino.y + y, tetromino.color)
 
-    def draw_grid(self) -> None:
-        """
-        在屏幕上绘制网格线。
-        """
+    def _create_grid_surface(self) -> pygame.Surface:
+        """创建网格的静态 Surface"""
+        grid_surface = pygame.Surface((self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT), pygame.SRCALPHA)
         for x in range(0, self.config.SCREEN_WIDTH, self.config.BLOCK_SIZE):
-            pygame.draw.line(self.screen, self.grid_line_color, (x, 0), (x, self.config.SCREEN_HEIGHT)) # 使用常量
+            pygame.draw.line(grid_surface, self.grid_line_color, (x, 0), (x, self.config.SCREEN_HEIGHT))
         for y in range(0, self.config.SCREEN_HEIGHT, self.config.BLOCK_SIZE):
-            pygame.draw.line(self.screen, self.grid_line_color, (0, y), (self.config.SCREEN_WIDTH, y)) # 使用常量
+            pygame.draw.line(grid_surface, self.grid_line_color, (0, y), (self.config.SCREEN_WIDTH, y))
+        return grid_surface
+
+    def draw_grid(self) -> None:
+        """绘制预生成的网格 Surface"""
+        self.screen.blit(self.grid_surface, (0, 0))
 
     def draw_score(self, score_manager: ScoreManager) -> None:
         """
@@ -602,7 +606,8 @@ class TetrisGame:
         Args:
             current_time (int): 当前时间（毫秒）。
         """
-        if current_time - self.last_move_time > self.move_delay:
+        time_since_last_move = current_time - self.last_move_time
+        if time_since_last_move > self.move_delay:
             if self.left_key_pressed:
                 if not self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x - 1, self.current_tetromino.y):
                     self.current_tetromino.x -= 1
