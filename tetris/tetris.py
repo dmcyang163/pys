@@ -2,35 +2,41 @@ import colorsys
 import pygame
 import random
 import os
+from typing import List, Tuple, Optional
+from enum import Enum
+from dataclasses import dataclass
 
+@dataclass
 class GameConfig:
-    """
-    配置游戏参数，例如屏幕尺寸、方块大小、颜色和形状。
-    """
-    SCREEN_WIDTH = 300
-    SCREEN_HEIGHT = 600
-    BLOCK_SIZE = 30
-    FALL_SPEED = 1.5
-    FAST_FALL_SPEED = 15.0
-    COLORS = []
-    SHAPES = [
-        [[1, 1, 1, 1]],
-        [[1, 1, 1], [0, 1, 0]],
-        [[1, 1], [1, 1]],
-        [[0, 1, 1], [1, 1, 0]],
-        [[1, 1, 0], [0, 1, 1]],
-        [[1, 0, 0], [1, 1, 1]],
-        [[0, 0, 1], [1, 1, 1]]
-    ]
-    PREVIEW_X = 220
-    PREVIEW_Y = 50
-    PREVIEW_SIZE = 4
+    SCREEN_WIDTH: int = 300
+    SCREEN_HEIGHT: int = 600
+    BLOCK_SIZE: int = 30
+    FALL_SPEED: float = 1.5
+    FAST_FALL_SPEED: float = 15.0
+    COLORS: List[Tuple[int, int, int]] = None
+    SHAPES: List[List[List[int]]] = None
+    PREVIEW_X: int = 220
+    PREVIEW_Y: int = 50
+    PREVIEW_SIZE: int = 4
+    NUM_COLORS: int = 12
+    GRID_LINE_COLOR: Tuple[int, int, int] = (50, 50, 50)
+    BACKGROUND_COLOR: Tuple[int, int, int] = (30, 30, 30)
+    EXPLOSION_PARTICLE_COUNT: int = 30
+    ANIMATION_DURATION: int = 300
 
-    def __init__(self):
-        num_colors = 12
-        self.COLORS = self._generate_colors(num_colors)
+    def __post_init__(self):
+        self.SHAPES = [
+            [[1, 1, 1, 1]],
+            [[1, 1, 1], [0, 1, 0]],
+            [[1, 1], [1, 1]],
+            [[0, 1, 1], [1, 1, 0]],
+            [[1, 1, 0], [0, 1, 1]],
+            [[1, 0, 0], [1, 1, 1]],
+            [[0, 0, 1], [1, 1, 1]]
+        ]
+        self.COLORS = self._generate_colors(self.NUM_COLORS)
 
-    def _generate_colors(self, num_colors: int) -> list[tuple[int, int, int]]:
+    def _generate_colors(self, num_colors: int) -> List[Tuple[int, int, int]]:
         """
         根据 HSV 值生成颜色列表。
 
@@ -65,7 +71,7 @@ class Tetromino:
         self.rotations = self._calculate_rotations()
         self.rotation_index = 0
 
-    def _calculate_rotations(self) -> list[list[list[int]]]:
+    def _calculate_rotations(self) -> List[List[List[int]]]:
         """
         计算形状的所有可能旋转。
 
@@ -77,7 +83,7 @@ class Tetromino:
             rotations.append(list(zip(*rotations[-1][::-1])))
         return rotations
 
-    def rotate(self):
+    def rotate(self) -> None:
         """
         将俄罗斯方块旋转到下一个预先计算的旋转。
         """
@@ -99,19 +105,19 @@ class Board:
         self.grid = [[0 for _ in range(config.SCREEN_WIDTH // config.BLOCK_SIZE)]
                      for _ in range(config.SCREEN_HEIGHT // config.BLOCK_SIZE)]
 
-    def check_collision(self, piece: Tetromino, piece_x: int, piece_y: int) -> bool:
+    def check_collision(self, tetromino: Tetromino, piece_x: int, piece_y: int) -> bool:
         """
         检查方块是否与面板或其他方块发生碰撞。
 
         Args:
-            piece (Tetromino): 要检查的方块。
+            tetromino (Tetromino): 要检查的方块。
             piece_x (int): 方块的 X 坐标。
             piece_y (int): 方块的 Y 坐标。
 
         Returns:
             bool: 如果发生碰撞，则返回 True，否则返回 False。
         """
-        for y, row in enumerate(piece.shape):
+        for y, row in enumerate(tetromino.shape):
             for x, cell in enumerate(row):
                 if cell:
                     new_x = piece_x + x
@@ -121,19 +127,19 @@ class Board:
                         return True
         return False
 
-    def merge_piece(self, piece: Tetromino):
+    def merge_piece(self, tetromino: Tetromino) -> None:
         """
         将方块合并到面板中。
 
         Args:
-            piece (Tetromino): 要合并的方块。
+            tetromino (Tetromino): 要合并的方块。
         """
-        for y, row in enumerate(piece.shape):
+        for y, row in enumerate(tetromino.shape):
             for x, cell in enumerate(row):
                 if cell:
-                    self.grid[piece.y + y][piece.x + x] = piece.color
+                    self.grid[tetromino.y + y][tetromino.x + x] = tetromino.color
 
-    def clear_lines(self) -> list[int]:  # 返回被清除的行的索引列表
+    def clear_lines(self) -> List[int]:  # 返回被清除的行的索引列表
         """
         清除面板上的任何完整行，并返回已清除的行数。
 
@@ -141,9 +147,10 @@ class Board:
             list[int]: 包含被清除行索引的列表。
         """
         lines_to_clear = [i for i, row in enumerate(self.grid) if all(row)]
+        self.remove_lines(lines_to_clear)  # 直接调用 remove_lines
         return lines_to_clear
 
-    def remove_lines(self, lines_to_clear: list[int]):
+    def remove_lines(self, lines_to_clear: List[int]) -> None:
         """
         从面板中移除指定的行。
 
@@ -166,7 +173,7 @@ class ScoreManager:
         self.high_score = 0
         self.load_high_score()
 
-    def load_high_score(self):
+    def load_high_score(self) -> None:
         """
         从文件中加载高分。
         """
@@ -178,7 +185,7 @@ class ScoreManager:
         except ValueError:
             self.high_score = 0
 
-    def update_high_score(self):
+    def update_high_score(self) -> None:
         """
         如果当前得分高于高分，则更新高分。
         """
@@ -191,7 +198,7 @@ class Particle:
     """
     表示爆炸效果中的一个粒子。
     """
-    def __init__(self, x: int, y: int, color: tuple[int, int, int]):
+    def __init__(self, x: int, y: int, color: Tuple[int, int, int]):
         """
         初始化粒子。
 
@@ -210,7 +217,7 @@ class Particle:
         self.original_color = color  # 记录原始颜色
         self.fade_speed = random.uniform(0.02, 0.05)  # 颜色淡化速度
 
-    def update(self):
+    def update(self) -> None:
         """
         更新粒子的位置、大小、颜色和生命周期。
         """
@@ -230,7 +237,7 @@ class Particle:
         b = max(0, b - fade_amount)
         self.color = (r, g, b)
 
-    def draw(self, screen: pygame.Surface):
+    def draw(self, screen: pygame.Surface) -> None:
         """
         在屏幕上绘制粒子。
 
@@ -255,8 +262,10 @@ class GameRenderer:
         pygame.display.set_caption("俄罗斯方块 - 分数显示版")
         self.font = pygame.font.Font(os.path.join("fonts", "MI_LanTing_Regular.ttf"), int(config.SCREEN_WIDTH * 0.08))
         self.block_surface = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), pygame.SRCALPHA)  # 创建一个 block_surface
+        self.grid_line_color = config.GRID_LINE_COLOR # 使用常量
+        self.background_color = config.BACKGROUND_COLOR # 使用常量
 
-    def draw_block(self, x: int, y: int, color: tuple[int, int, int], alpha: int = 255):
+    def draw_block(self, x: int, y: int, color: Tuple[int, int, int], alpha: int = 255) -> None:
         """
         在屏幕上绘制一个单独的方块，可以选择设置透明度。
 
@@ -274,40 +283,40 @@ class GameRenderer:
                          self.config.BLOCK_SIZE,
                          self.config.BLOCK_SIZE), 1)
 
-    def draw_board(self, board: Board):
+    def draw_board(self, game_board: Board) -> None:
         """
         在屏幕上绘制整个游戏面板。
 
         Args:
-            board (Board): 要绘制的游戏面板对象。
+            game_board (Board): 要绘制的游戏面板对象。
         """
-        for y, row in enumerate(board.grid):
+        for y, row in enumerate(game_board.grid):
             for x, cell in enumerate(row):
                 if cell:
                     self.draw_block(x, y, cell)
 
-    def draw_piece(self, piece: Tetromino):
+    def draw_piece(self, tetromino: Tetromino) -> None:
         """
         在屏幕上绘制当前的俄罗斯方块。
 
         Args:
-            piece (Tetromino): 要绘制的俄罗斯方块对象。
+            tetromino (Tetromino): 要绘制的俄罗斯方块对象。
         """
-        for y, row in enumerate(piece.shape):
+        for y, row in enumerate(tetromino.shape):
             for x, cell in enumerate(row):
                 if cell:
-                    self.draw_block(piece.x + x, piece.y + y, piece.color)
+                    self.draw_block(tetromino.x + x, tetromino.y + y, tetromino.color)
 
-    def draw_grid(self):
+    def draw_grid(self) -> None:
         """
         在屏幕上绘制网格线。
         """
         for x in range(0, self.config.SCREEN_WIDTH, self.config.BLOCK_SIZE):
-            pygame.draw.line(self.screen, (50, 50, 50), (x, 0), (x, self.config.SCREEN_HEIGHT))
+            pygame.draw.line(self.screen, self.grid_line_color, (x, 0), (x, self.config.SCREEN_HEIGHT)) # 使用常量
         for y in range(0, self.config.SCREEN_HEIGHT, self.config.BLOCK_SIZE):
-            pygame.draw.line(self.screen, (50, 50, 50), (0, y), (self.config.SCREEN_WIDTH, y))
+            pygame.draw.line(self.screen, self.grid_line_color, (0, y), (self.config.SCREEN_WIDTH, y)) # 使用常量
 
-    def draw_score(self, score_manager: ScoreManager):
+    def draw_score(self, score_manager: ScoreManager) -> None:
         """
         在屏幕上绘制得分和高分。
 
@@ -321,22 +330,22 @@ class GameRenderer:
         self.screen.blit(score_text, (10, 10))
         self.screen.blit(high_score_text, (10, 10 + int(self.config.SCREEN_WIDTH * 0.08)))
 
-    def draw_next_piece(self, piece: Tetromino, config: GameConfig):
+    def draw_next_piece(self, tetromino: Tetromino, config: GameConfig) -> None:
         """
         在预览区域绘制下一个俄罗斯方块。
 
         Args:
-            piece (Tetromino): 要绘制的下一个俄罗斯方块对象。
+            tetromino (Tetromino): 要绘制的下一个俄罗斯方块对象。
             config (GameConfig): 游戏配置对象。
         """
-        for y, row in enumerate(piece.shape):
+        for y, row in enumerate(tetromino.shape):
             for x, cell in enumerate(row):
                 if cell:
                     block_x = config.PREVIEW_X // config.BLOCK_SIZE + x
                     block_y = config.PREVIEW_Y // config.BLOCK_SIZE + y
-                    self.draw_block(block_x, block_y, piece.color)
+                    self.draw_block(block_x, block_y, tetromino.color)
 
-    def draw_explosion(self, x: int, y: int, color: tuple[int, int, int], explosion_particles: list[Particle]):
+    def draw_explosion(self, x: int, y: int, color: Tuple[int, int, int], explosion_particles: List[Particle]) -> None:
         """
         在指定位置创建爆炸效果。
 
@@ -359,20 +368,25 @@ class GameRenderer:
                             y * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2),
                            self.config.BLOCK_SIZE // 2)
 
-    def draw_clearing_animation(self, board: Board, lines_to_clear: list[int], animation_progress: float, explosion_particles: list[Particle]):
+    def draw_clearing_animation(self, game_board: Board, lines_to_clear: List[int], animation_progress: float, explosion_particles: List[Particle]) -> None:
         """
         绘制指定行的清除动画（爆炸效果）。
 
         Args:
-            board (Board): 游戏面板对象。
+            game_board (Board): 游戏面板对象。
             lines_to_clear (list[int]): 要清除的行索引列表。
             animation_progress (float): 动画进度 (0.0 到 1.0)。
             explosion_particles (list[Particle]): 存储爆炸粒子的列表。
         """
         for i in lines_to_clear:
-            for x in range(len(board.grid[0])):
-                if board.grid[i][x]:
-                    self.draw_explosion(x, i, board.grid[i][x], explosion_particles)
+            for x in range(len(game_board.grid[0])):
+                if game_board.grid[i][x]:
+                    self.draw_explosion(x, i, game_board.grid[i][x], explosion_particles)
+
+class GameState(Enum):
+    MENU = 1
+    PLAYING = 2
+    GAME_OVER = 3
 
 class TetrisGame:
     """
@@ -389,11 +403,11 @@ class TetrisGame:
             os.environ['SDL_VIDEODRIVER'] = 'windib'
             pygame.display.init()
         self.config = GameConfig()
-        self.board = Board(self.config)
+        self.game_board = Board(self.config)
         self.renderer = GameRenderer(self.config)
         self.score_manager = ScoreManager()
-        self.current_piece = self._create_new_piece()
-        self.next_piece = self._create_new_piece()
+        self.current_tetromino = self._create_new_piece()
+        self.next_tetromino = self._create_new_piece()
         self.last_fall_time = pygame.time.get_ticks()
         self.down_key_pressed = False
         self.left_key_pressed = False
@@ -405,6 +419,7 @@ class TetrisGame:
         self.clearing_animation_progress = 0.0  # 清除动画的进度 (0.0 到 1.0)
         self.is_clearing = False  # 是否正在清除动画
         self.explosion_particles = []  # 存储爆炸粒子
+        self.game_state = GameState.PLAYING
 
         # 修改这里
         pygame.mixer.music.load(os.path.join("sounds", "tetris_music.mp3"))
@@ -420,8 +435,8 @@ class TetrisGame:
         Returns:
             Tetromino: 新创建的俄罗斯方块对象。
         """
-        piece = Tetromino(self.config)
-        return piece
+        tetromino = Tetromino(self.config)
+        return tetromino
 
     def handle_input(self) -> bool:
         """
@@ -436,37 +451,44 @@ class TetrisGame:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     self.left_key_pressed = True
-                elif event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_RIGHT:
                     self.right_key_pressed = True
-                elif event.key == pygame.K_UP:
-                    original_rotation_index = self.current_piece.rotation_index
-                    self.current_piece.rotate()
-                    if self.board.check_collision(self.current_piece, self.current_piece.x, self.current_piece.y):
-                        self.current_piece.rotation_index = original_rotation_index
-                        self.current_piece.shape = self.current_piece.rotations[original_rotation_index]
-                elif event.key == pygame.K_DOWN:
+                if event.key == pygame.K_DOWN:
                     self.down_key_pressed = True
-            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_UP:
+                    self.current_tetromino.rotate()
+                    if self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x, self.current_tetromino.y):
+                        # 如果旋转后发生碰撞，则撤销旋转
+                        for _ in range(3):
+                            self.current_tetromino.rotate()
+            if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT:
                     self.left_key_pressed = False
-                elif event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_RIGHT:
                     self.right_key_pressed = False
-                elif event.key == pygame.K_DOWN:
+                if event.key == pygame.K_DOWN:
                     self.down_key_pressed = False
         return True
 
     def new_piece(self) -> bool:
         """
-        创建一个新的俄罗斯方块，并检查游戏是否结束。
+        创建一个新的俄罗斯方块，并将其放置在面板顶部。
+
+        如果无法放置新的俄罗斯方块（游戏结束），则返回 False。
 
         Returns:
-            bool: 如果可以创建新的方块（游戏未结束），则返回 True，否则返回 False。
+            bool: 如果成功创建了新的俄罗斯方块，则返回 True，否则返回 False (游戏结束)。
         """
-        self.current_piece = self.next_piece
-        self.current_piece.x = len(self.board.grid[0]) // 2 - len(self.current_piece.shape[0]) // 2
-        self.current_piece.y = 0
-        self.next_piece = self._create_new_piece()
-        return not self.board.check_collision(self.current_piece, self.current_piece.x, self.current_piece.y)
+        self.current_tetromino = self.next_tetromino
+        self.next_tetromino = self._create_new_piece()
+        self.current_tetromino.x = self.config.SCREEN_WIDTH // self.config.BLOCK_SIZE // 2 - len(self.current_tetromino.shape[0]) // 2
+        self.current_tetromino.y = 0
+        if self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x, self.current_tetromino.y):
+            # 游戏结束
+            self.score_manager.update_high_score()
+            self.game_state = GameState.GAME_OVER
+            return False
+        return True
 
     def _handle_clearing_animation(self, current_time: int, animation_duration: int) -> None:
         """
@@ -477,10 +499,10 @@ class TetrisGame:
             animation_duration (int): 动画持续时间（毫秒）。
         """
         self.clearing_animation_progress = min(1.0, self.clearing_animation_progress + (current_time - self.last_frame_time) / animation_duration)
-        self.renderer.draw_clearing_animation(self.board, self.cleared_lines, self.clearing_animation_progress, self.explosion_particles)
+        self.renderer.draw_clearing_animation(self.game_board, self.cleared_lines, self.clearing_animation_progress, self.explosion_particles)
         if self.clearing_animation_progress >= 1.0:
             # 动画完成，移除行并创建新方块
-            self.board.remove_lines(self.cleared_lines)
+            self.game_board.remove_lines(self.cleared_lines)
             self.is_clearing = False
             self.explosion_particles = []  # 清空爆炸粒子
             if not self.new_piece():
@@ -493,22 +515,37 @@ class TetrisGame:
         Args:
             current_time (int): 当前时间（毫秒）。
         """
-        # 左右移动逻辑
+        self._move_piece_horizontally(current_time)
+        self._move_piece_down(current_time)
+
+    def _move_piece_horizontally(self, current_time: int) -> None:
+        """
+        处理方块的左右移动。
+
+        Args:
+            current_time (int): 当前时间（毫秒）。
+        """
         if current_time - self.last_move_time > self.move_delay:
             if self.left_key_pressed:
-                if not self.board.check_collision(self.current_piece, self.current_piece.x - 1, self.current_piece.y):
-                    self.current_piece.x -= 1
+                if not self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x - 1, self.current_tetromino.y):
+                    self.current_tetromino.x -= 1
                     self.last_move_time = current_time
             if self.right_key_pressed:
-                if not self.board.check_collision(self.current_piece, self.current_piece.x + 1, self.current_piece.y):
-                    self.current_piece.x += 1
+                if not self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x + 1, self.current_tetromino.y):
+                    self.current_tetromino.x += 1
                     self.last_move_time = current_time
 
-        # 下落逻辑
+    def _move_piece_down(self, current_time: int) -> None:
+        """
+        处理方块的下落。
+
+        Args:
+            current_time (int): 当前时间（毫秒）。
+        """
         current_speed = self.config.FAST_FALL_SPEED if self.down_key_pressed else self.config.FALL_SPEED
         if current_time - self.last_fall_time > 1000 / current_speed:
-            if not self.board.check_collision(self.current_piece, self.current_piece.x, self.current_piece.y + 1):
-                self.current_piece.y += 1
+            if not self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x, self.current_tetromino.y + 1):
+                self.current_tetromino.y += 1
                 self.last_fall_time = current_time  # 更新 last_fall_time
             else:
                 self._handle_piece_landed()
@@ -517,41 +554,17 @@ class TetrisGame:
         """
         处理方块落地的情况。
         """
-        self.board.merge_piece(self.current_piece)
-        
-        cleared_lines = self.board.clear_lines()  # 获取需要清除的行
-        while cleared_lines:  # 循环清除所有可清除的行
-            self.is_clearing = True  # 启动清除动画
-            self.clearing_animation_progress = 0.0  # 重置动画进度
-            self.cleared_lines = cleared_lines
-
-            # 播放爆炸音效
-            self.explosion_sound.play()
-
-            # 等待清除动画完成
-            animation_duration = 300
-            start_time = pygame.time.get_ticks()
-            while self.clearing_animation_progress < 1.0:
-                current_time = pygame.time.get_ticks()
-                self.clearing_animation_progress = min(1.0, (current_time - start_time) / animation_duration)
-                self.renderer.draw_clearing_animation(self.board, self.cleared_lines, self.clearing_animation_progress, self.explosion_particles)
-                self._update_explosion_particles()
-                self._render_game()
-                pygame.display.flip()
-                clock = pygame.time.Clock()
-                clock.tick(30)
-
-            self.board.remove_lines(self.cleared_lines)
-            self.score_manager.score += len(self.cleared_lines) * 100
-            self.score_manager.update_high_score()
-            self.is_clearing = False
-            self.explosion_particles = []  # 清空爆炸粒子
-
-            cleared_lines = self.board.clear_lines()  # 再次检查是否有新的行可以清除
-
-        if not self.new_piece():
-            self.running = False  # Game over
-
+        self.game_board.merge_piece(self.current_tetromino)
+        self.cleared_lines = self.game_board.clear_lines()
+        if self.cleared_lines:
+            self.is_clearing = True
+            self.clearing_animation_progress = 0.0
+            self.score_manager.score += 100 * len(self.cleared_lines) ** 2
+            self.explosion_sound.play()  # 播放爆炸音效
+        else:
+            if not self.new_piece():
+                self.running = False  # Game over
+        self.last_fall_time = pygame.time.get_ticks()
 
     def _update_explosion_particles(self) -> None:
         """
@@ -559,70 +572,93 @@ class TetrisGame:
         """
         for particle in self.explosion_particles[:]:
             particle.update()
-            if particle.lifetime <= 0 or particle.size <= 1:  # 添加大小判断
+            if particle.lifetime <= 0:
                 self.explosion_particles.remove(particle)
 
     def _render_game(self) -> None:
         """
         渲染游戏界面。
         """
-        self.renderer.screen.fill((30, 30, 30))
+        self.renderer.screen.fill(self.renderer.background_color)
         self.renderer.draw_grid()
-        self.renderer.draw_board(self.board)
+        self.renderer.draw_board(self.game_board)
 
         if not self.is_clearing:
             # 绘制当前方块
-            self.renderer.draw_piece(self.current_piece)
+            self.renderer.draw_piece(self.current_tetromino)
 
         # 绘制爆炸粒子
         for particle in self.explosion_particles:
             particle.draw(self.renderer.screen)
 
-        self.renderer.draw_next_piece(self.next_piece, self.config)
+        self.renderer.draw_next_piece(self.next_tetromino, self.config)
         self.renderer.draw_score(self.score_manager)
         pygame.display.flip()
 
-    def game_loop(self):
+    def game_loop(self) -> None:
         """
         主游戏循环。
         """
-        self.running = True
         clock = pygame.time.Clock()
-        animation_duration = 300  # 动画持续时间（毫秒）
-        self.last_frame_time = pygame.time.get_ticks()
-        self.last_fall_time = pygame.time.get_ticks()  # 初始化 last_fall_time
-        current_speed = self.config.FALL_SPEED  # 初始化 current_speed
+        self.running = True
+        self.new_piece()
 
         while self.running:
             current_time = pygame.time.get_ticks()
             self.running = self.handle_input()
 
-            if self.is_clearing:
-                self._handle_clearing_animation(current_time, animation_duration)
-            else:
-                self._handle_piece_movement(current_time)
-                current_speed = self.config.FAST_FALL_SPEED if self.down_key_pressed else self.config.FALL_SPEED  # 更新 current_speed
+            if self.game_state == GameState.PLAYING:
+                if self.is_clearing:
+                    self._handle_clearing_animation(current_time, self.config.ANIMATION_DURATION)
+                else:
+                    self._handle_piece_movement(current_time)
 
-            # 更新和绘制爆炸粒子
-            self._update_explosion_particles()
+                self._update_explosion_particles()
+                self._render_game()
 
-            # 渲染
-            self._render_game()
+            elif self.game_state == GameState.GAME_OVER:
+                # 显示游戏结束界面
+                self.renderer.screen.fill((0, 0, 0))
+                game_over_text = self.renderer.font.render("游戏结束", True, (255, 255, 255))
+                score_text = self.renderer.font.render(f"分数: {self.score_manager.score:,}", True, (255, 255, 255))
+                high_score_text = self.renderer.font.render(f"最高分: {self.score_manager.high_score:,}", True, (255, 255, 255))
+                restart_text = self.renderer.font.render("按 R 重新开始", True, (255, 255, 255))
 
-            self.last_frame_time = current_time  # 记录当前帧的时间
+                game_over_rect = game_over_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 3))
+                score_rect = score_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2))
+                high_score_rect = high_score_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2 + 50))
+                restart_rect = restart_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2 + 100))
 
-            # 调试信息
-            print(f"current_time: {current_time}, last_fall_time: {self.last_fall_time}, current_speed: {current_speed}")
-            print(f"clearing_animation_progress: {self.clearing_animation_progress}, is_clearing: {self.is_clearing}")
-            print(f"FPS: {clock.get_fps()}")
+                self.renderer.screen.blit(game_over_text, game_over_rect)
+                self.renderer.screen.blit(score_text, score_rect)
+                self.renderer.screen.blit(high_score_text, high_score_rect)
+                self.renderer.screen.blit(restart_text, restart_rect)
+
+                pygame.display.flip()
+
+                # 等待用户按下 R 键重新开始游戏
+                waiting_for_restart = True
+                while waiting_for_restart:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            self.running = False
+                            waiting_for_restart = False
+                        if event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_r:
+                                # 重新初始化游戏
+                                self.__init__()
+                                waiting_for_restart = False
+                                self.game_state = GameState.PLAYING
+                                self.new_piece()
+
+            self.last_frame_time = current_time
+            # print(f"FPS: {clock.get_fps()}")
 
             # 限制帧率为 30 FPS
             clock.tick(30)
 
         pygame.mixer.music.stop()
         pygame.quit()
-
-
 
 if __name__ == "__main__":
     game = TetrisGame()
