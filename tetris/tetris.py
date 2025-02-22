@@ -421,13 +421,12 @@ class TetrisGame:
         self.explosion_particles = []  # 存储爆炸粒子
         self.game_state = GameState.PLAYING
 
-        # 修改这里
+        # 加载背景音乐
         pygame.mixer.music.load(os.path.join("sounds", "tetris_music.mp3"))
         pygame.mixer.music.play(-1)
 
         # 加载爆炸音效
         self.explosion_sound = pygame.mixer.Sound(os.path.join("sounds", "explosion.wav"))
-
     def _create_new_piece(self) -> Tetromino:
         """
         创建一个新的俄罗斯方块，并将其放置在面板顶部。
@@ -448,28 +447,28 @@ class TetrisGame:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    self.left_key_pressed = True
-                if event.key == pygame.K_RIGHT:
-                    self.right_key_pressed = True
-                if event.key == pygame.K_DOWN:
-                    self.down_key_pressed = True
-                if event.key == pygame.K_UP:
-                    self.current_tetromino.rotate()
-                    if self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x, self.current_tetromino.y):
-                        # 如果旋转后发生碰撞，则撤销旋转
-                        for _ in range(3):
-                            self.current_tetromino.rotate()
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT:
-                    self.left_key_pressed = False
-                if event.key == pygame.K_RIGHT:
-                    self.right_key_pressed = False
-                if event.key == pygame.K_DOWN:
-                    self.down_key_pressed = False
-        return True
-
+            if self.game_state == GameState.PLAYING:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_LEFT:
+                        self.left_key_pressed = True
+                    if event.key == pygame.K_RIGHT:
+                        self.right_key_pressed = True
+                    if event.key == pygame.K_DOWN:
+                        self.down_key_pressed = True
+                    if event.key == pygame.K_UP:
+                        self.current_tetromino.rotate()
+                        if self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x, self.current_tetromino.y):
+                            # 如果旋转后发生碰撞，则撤销旋转
+                            for _ in range(3):
+                                self.current_tetromino.rotate()
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_LEFT:
+                        self.left_key_pressed = False
+                    if event.key == pygame.K_RIGHT:
+                        self.right_key_pressed = False
+                    if event.key == pygame.K_DOWN:
+                        self.down_key_pressed = False
+        return True    
     def new_piece(self) -> bool:
         """
         创建一个新的俄罗斯方块，并将其放置在面板顶部。
@@ -563,7 +562,8 @@ class TetrisGame:
             self.explosion_sound.play()  # 播放爆炸音效
         else:
             if not self.new_piece():
-                self.running = False  # Game over
+                # 游戏结束，设置游戏状态为 GAME_OVER
+                self.game_state = GameState.GAME_OVER
         self.last_fall_time = pygame.time.get_ticks()
 
     def _update_explosion_particles(self) -> None:
@@ -623,20 +623,23 @@ class TetrisGame:
                 score_text = self.renderer.font.render(f"分数: {self.score_manager.score:,}", True, (255, 255, 255))
                 high_score_text = self.renderer.font.render(f"最高分: {self.score_manager.high_score:,}", True, (255, 255, 255))
                 restart_text = self.renderer.font.render("按 R 重新开始", True, (255, 255, 255))
+                quit_text = self.renderer.font.render("按 Q 退出游戏", True, (255, 255, 255))
 
                 game_over_rect = game_over_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 3))
                 score_rect = score_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2))
                 high_score_rect = high_score_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2 + 50))
                 restart_rect = restart_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2 + 100))
+                quit_rect = quit_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2 + 150))
 
                 self.renderer.screen.blit(game_over_text, game_over_rect)
                 self.renderer.screen.blit(score_text, score_rect)
                 self.renderer.screen.blit(high_score_text, high_score_rect)
                 self.renderer.screen.blit(restart_text, restart_rect)
+                self.renderer.screen.blit(quit_text, quit_rect)
 
                 pygame.display.flip()
 
-                # 等待用户按下 R 键重新开始游戏
+                # 等待用户按下 R 键重新开始游戏或 Q 键退出游戏
                 waiting_for_restart = True
                 while waiting_for_restart:
                     for event in pygame.event.get():
@@ -650,6 +653,10 @@ class TetrisGame:
                                 waiting_for_restart = False
                                 self.game_state = GameState.PLAYING
                                 self.new_piece()
+                            elif event.key == pygame.K_q:
+                                # 退出游戏
+                                self.running = False
+                                waiting_for_restart = False
 
             self.last_frame_time = current_time
             # print(f"FPS: {clock.get_fps()}")
@@ -659,6 +666,7 @@ class TetrisGame:
 
         pygame.mixer.music.stop()
         pygame.quit()
+
 
 if __name__ == "__main__":
     game = TetrisGame()
