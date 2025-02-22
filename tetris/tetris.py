@@ -246,6 +246,28 @@ class Particle:
         """
         pygame.draw.rect(screen, self.color, (int(self.x), int(self.y), int(self.size), int(self.size)))
 
+class ParticleSystem:
+    def __init__(self):
+        self.particles = []
+
+    def add_particles(self, x: int, y: int, color: Tuple[int, int, int], count: int = 30) -> None:
+        """创建一组粒子"""
+        for _ in range(count):
+            particle = Particle(x, y, color)
+            self.particles.append(particle)
+
+    def update(self) -> None:
+        """更新所有粒子的状态"""
+        for particle in self.particles[:]:
+            particle.update()
+            if particle.lifetime <= 0:
+                self.particles.remove(particle)
+
+    def draw(self, screen: pygame.Surface) -> None:
+        """绘制所有粒子"""
+        for particle in self.particles:
+            particle.draw(screen)
+
 class GameRenderer:
     """
     负责渲染游戏界面，包括面板、方块、网格和得分。
@@ -490,6 +512,7 @@ class TetrisGame:
         # 加载爆炸音效
         self.explosion_sound = pygame.mixer.Sound(os.path.join("sounds", "explosion.wav"))
 
+        self.particle_system = ParticleSystem()  # 初始化粒子系统
         # 初始化 InputHandler
         self.input_handler = InputHandler(self)
 
@@ -524,20 +547,12 @@ class TetrisGame:
         return True
 
     def _handle_clearing_animation(self, current_time: int, animation_duration: int) -> None:
-        """
-        处理清除动画。
-
-        Args:
-            current_time (int): 当前时间（毫秒）。
-            animation_duration (int): 动画持续时间（毫秒）。
-        """
+        """处理清除动画"""
         self.clearing_animation_progress = min(1.0, self.clearing_animation_progress + (current_time - self.last_frame_time) / animation_duration)
-        self.renderer.draw_clearing_animation(self.game_board, self.cleared_lines, self.clearing_animation_progress, self.explosion_particles)
         if self.clearing_animation_progress >= 1.0:
             # 动画完成，移除行并创建新方块
             self.game_board.remove_lines(self.cleared_lines)
             self.is_clearing = False
-            self.explosion_particles = []  # 清空爆炸粒子
             if not self.new_piece():
                 self.running = False  # Game over
 
@@ -584,9 +599,7 @@ class TetrisGame:
                 self._handle_piece_landed()
 
     def _handle_piece_landed(self) -> None:
-        """
-        处理方块落地的情况。
-        """
+        """处理方块落地的情况"""
         self.game_board.merge_piece(self.current_tetromino)
         self.cleared_lines = self.game_board.clear_lines()
         if self.cleared_lines:
@@ -594,12 +607,24 @@ class TetrisGame:
             self.clearing_animation_progress = 0.0
             self.score_manager.score += 100 * len(self.cleared_lines) ** 2
             self.explosion_sound.play()  # 播放爆炸音效
+
+            # 触发粒子效果
+            for line in self.cleared_lines:
+                for x in range(len(self.game_board.grid[0])):
+                    if self.game_board.grid[line][x]:
+                        # 在每一行的每个方块位置创建粒子
+                        self.particle_system.add_particles(
+                            x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                            line * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                            self.game_board.grid[line][x],
+                            count=10  # 每个方块位置创建 10 个粒子
+                        )
         else:
             if not self.new_piece():
                 # 游戏结束，设置游戏状态为 GAME_OVER
                 self.game_state = GameState.GAME_OVER
         self.last_fall_time = pygame.time.get_ticks()
-
+    
     def _update_explosion_particles(self) -> None:
         """
         更新和移除爆炸粒子。
@@ -610,9 +635,7 @@ class TetrisGame:
                 self.explosion_particles.remove(particle)
 
     def _render_game(self) -> None:
-        """
-        渲染游戏界面。
-        """
+        """渲染游戏界面"""
         self.renderer.screen.fill(self.renderer.background_color)
         self.renderer.draw_grid()
         self.renderer.draw_board(self.game_board)
@@ -621,25 +644,21 @@ class TetrisGame:
             # 绘制当前方块
             self.renderer.draw_piece(self.current_tetromino)
 
-        # 绘制爆炸粒子
-        for particle in self.explosion_particles:
-            particle.draw(self.renderer.screen)
+        # 绘制粒子
+        self.particle_system.draw(self.renderer.screen)
 
         self.renderer.draw_next_piece(self.next_tetromino, self.config)
         self.renderer.draw_score(self.score_manager)
         pygame.display.flip()
 
     def game_loop(self) -> None:
-        """
-        主游戏循环。
-        """
+        """主游戏循环"""
         clock = pygame.time.Clock()
         self.running = True
         self.new_piece()
 
         while self.running:
             current_time = pygame.time.get_ticks()
-            # 使用 InputHandler 处理输入
             self.running = self.input_handler.handle_input()
 
             if self.game_state == GameState.PLAYING:
@@ -648,7 +667,9 @@ class TetrisGame:
                 else:
                     self._handle_piece_movement(current_time)
 
-                self._update_explosion_particles()
+                # 更新粒子系统
+                self.particle_system.update()
+
                 self._render_game()
 
             elif self.game_state == GameState.GAME_OVER:
@@ -681,45 +702,28 @@ class TetrisGame:
                 waiting_for_restart = True
                 while waiting_for_restart:
                     for event in pygame.event.get():
-                        print("Event:", event)  # 打印事件信息
                         if event.type == pygame.QUIT:
                             self.running = False
                             waiting_for_restart = False
                         if event.type == pygame.KEYDOWN:
-                            key = pygame.key.name(event.key).lower()  # 将按键值转换为小写
-                            print("Key pressed:", key)  # 打印按下的键
-                            if key == 'r':
-                                # 重新初始化游戏
+                            key = pygame.key.name(event.key).lower()
+                            if key in ['r', 'ｒ']:
                                 self.__init__()
                                 waiting_for_restart = False
                                 self.game_state = GameState.PLAYING
                                 self.new_piece()
-                            elif key == 'q':
-                                # 退出游戏
-                                self.running = False
-                                waiting_for_restart = False
-                        elif event.type == pygame.TEXTEDITING:
-                            # 处理文本输入事件
-                            print("TextEditing event:", event.text)  # 打印文本输入事件
-                            if event.text.lower() == 'r':
-                                # 重新初始化游戏
-                                self.__init__()
-                                waiting_for_restart = False
-                                self.game_state = GameState.PLAYING
-                                self.new_piece()
-                            elif event.text.lower() == 'q':
-                                # 退出游戏
+                            elif key in ['q', 'ｑ']:
                                 self.running = False
                                 waiting_for_restart = False
 
             self.last_frame_time = current_time
-            # print(f"FPS: {clock.get_fps()}")
-
-            # 限制帧率为 30 FPS
             clock.tick(30)
 
         pygame.mixer.music.stop()
         pygame.quit()
+
+
+
 
 if __name__ == "__main__":
     game = TetrisGame()
