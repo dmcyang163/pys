@@ -639,15 +639,20 @@ class TetrisGame:
 
                 pygame.display.flip()
 
+                # 清空事件队列
+                pygame.event.clear()
+
                 # 等待用户按下 R 键重新开始游戏或 Q 键退出游戏
                 waiting_for_restart = True
                 while waiting_for_restart:
                     for event in pygame.event.get():
+                        print("Event:", event)  # 打印事件信息
                         if event.type == pygame.QUIT:
                             self.running = False
                             waiting_for_restart = False
                         if event.type == pygame.KEYDOWN:
                             key = pygame.key.name(event.key).lower()  # 将按键值转换为小写
+                            print("Key pressed:", key)  # 打印按下的键
                             if key == 'r':
                                 # 重新初始化游戏
                                 self.__init__()
@@ -655,6 +660,19 @@ class TetrisGame:
                                 self.game_state = GameState.PLAYING
                                 self.new_piece()
                             elif key == 'q':
+                                # 退出游戏
+                                self.running = False
+                                waiting_for_restart = False
+                        elif event.type == pygame.TEXTEDITING:
+                            # 处理文本输入事件
+                            print("TextEditing event:", event.text)  # 打印文本输入事件
+                            if event.text.lower() == 'r':
+                                # 重新初始化游戏
+                                self.__init__()
+                                waiting_for_restart = False
+                                self.game_state = GameState.PLAYING
+                                self.new_piece()
+                            elif event.text.lower() == 'q':
                                 # 退出游戏
                                 self.running = False
                                 waiting_for_restart = False
@@ -667,7 +685,6 @@ class TetrisGame:
 
         pygame.mixer.music.stop()
         pygame.quit()
-
 
 if __name__ == "__main__":
     game = TetrisGame()
