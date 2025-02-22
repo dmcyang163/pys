@@ -407,18 +407,21 @@ class GameRenderer:
             color (tuple[int, int, int]): 爆炸粒子的颜色 (RGB)。
             explosion_particles (list[Particle]): 存储爆炸粒子的列表。
         """
-        num_particles = 30  # 增加粒子数量
+        num_particles = min(30, self.particle_pool.max_particles - len(self.particle_system.particles))  # 限制粒子数量
         for _ in range(num_particles):
-            particle = Particle(x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
-                                y * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
-                                color)
-            explosion_particles.append(particle)
+            particle = self.particle_pool.get_particle(
+                x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                y * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                color
+            )
+            if particle:
+                explosion_particles.append(particle)
 
         # 添加闪光效果
         pygame.draw.circle(self.screen, (255, 255, 255),
-                           (x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                        (x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
                             y * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2),
-                           self.config.BLOCK_SIZE // 2)
+                        self.config.BLOCK_SIZE // 2)
 
     def draw_clearing_animation(self, game_board: Board, lines_to_clear: List[int], animation_progress: float, explosion_particles: List[Particle]) -> None:
         """
@@ -683,6 +686,30 @@ class TetrisGame:
         self.renderer.draw_score(self.score_manager)
         pygame.display.flip()
 
+    def _render_game_over(self) -> None:
+        """
+        渲染游戏结束界面。
+        """
+        if not hasattr(self, 'game_over_surface'):  # 预渲染游戏结束界面
+            self.game_over_surface = pygame.Surface((self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT), pygame.SRCALPHA)
+            game_over_text = self.renderer.font.render("游戏结束", True, (255, 255, 255))
+            score_text = self.renderer.font.render(f"分数: {self.score_manager.score:,}", True, (255, 255, 255))
+            high_score_text = self.renderer.font.render(f"最高分: {self.score_manager.high_score:,}", True, (255, 255, 255))
+            restart_text = self.renderer.font.render("按 R 重新开始", True, (255, 255, 255))
+            quit_text = self.renderer.font.render("按 Q 退出游戏", True, (255, 255, 255))
+
+            # 将文本绘制到 game_over_surface 上
+            self.game_over_surface.blit(game_over_text, (self.config.SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, self.config.SCREEN_HEIGHT // 3))
+            self.game_over_surface.blit(score_text, (self.config.SCREEN_WIDTH // 2 - score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2))
+            self.game_over_surface.blit(high_score_text, (self.config.SCREEN_WIDTH // 2 - high_score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 50))
+            self.game_over_surface.blit(restart_text, (self.config.SCREEN_WIDTH // 2 - restart_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 100))
+            self.game_over_surface.blit(quit_text, (self.config.SCREEN_WIDTH // 2 - quit_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 150))
+
+        # 将预渲染的 game_over_surface 绘制到屏幕上
+        self.renderer.screen.blit(self.game_over_surface, (0, 0))
+        pygame.display.flip()
+
+
     def game_loop(self) -> None:
         """主游戏循环"""
         clock = pygame.time.Clock()
@@ -706,26 +733,7 @@ class TetrisGame:
 
             elif self.game_state == GameState.GAME_OVER:
                 # 显示游戏结束界面
-                self.renderer.screen.fill((0, 0, 0))
-                game_over_text = self.renderer.font.render("游戏结束", True, (255, 255, 255))
-                score_text = self.renderer.font.render(f"分数: {self.score_manager.score:,}", True, (255, 255, 255))
-                high_score_text = self.renderer.font.render(f"最高分: {self.score_manager.high_score:,}", True, (255, 255, 255))
-                restart_text = self.renderer.font.render("按 R 重新开始", True, (255, 255, 255))
-                quit_text = self.renderer.font.render("按 Q 退出游戏", True, (255, 255, 255))
-
-                game_over_rect = game_over_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 3))
-                score_rect = score_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2))
-                high_score_rect = high_score_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2 + 50))
-                restart_rect = restart_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2 + 100))
-                quit_rect = quit_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2 + 150))
-
-                self.renderer.screen.blit(game_over_text, game_over_rect)
-                self.renderer.screen.blit(score_text, score_rect)
-                self.renderer.screen.blit(high_score_text, high_score_rect)
-                self.renderer.screen.blit(restart_text, restart_rect)
-                self.renderer.screen.blit(quit_text, quit_rect)
-
-                pygame.display.flip()
+                self._render_game_over()  # 调用预渲染的游戏结束界面
 
                 # 清空事件队列
                 pygame.event.clear()
