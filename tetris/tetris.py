@@ -12,7 +12,7 @@ class GameConfig:
     SCREEN_HEIGHT: int = 600
     BLOCK_SIZE: int = 30
     FALL_SPEED: float = 1.5
-    FAST_FALL_SPEED: float = 15.0
+    FAST_FALL_SPEED: float = 21.0
     COLORS: List[Tuple[int, int, int]] = None
     SHAPES: List[List[List[int]]] = None
     PREVIEW_X: int = 220
