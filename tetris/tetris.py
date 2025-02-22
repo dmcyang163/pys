@@ -162,15 +162,14 @@ class Board:
             self.grid.insert(0, [0 for _ in range(len(self.grid[0]))])
 
 class ScoreManager:
-    """
-    管理游戏得分和高分。
-    """
     def __init__(self):
         """
         初始化得分管理器。
         """
         self.score = 0
         self.high_score = 0
+        self.score_changed = True  # 分数是否发生变化
+        self.high_score_changed = True  # 最高分是否发生变化
         self.load_high_score()
 
     def load_high_score(self) -> None:
@@ -191,8 +190,17 @@ class ScoreManager:
         """
         if self.score > self.high_score:
             self.high_score = self.score
+            self.high_score_changed = True  # 标记最高分发生变化
             with open("high_score.txt", "w") as f:
                 f.write(str(self.high_score))
+
+    def add_score(self, lines_cleared: int) -> None:
+        """
+        增加分数。
+        """
+        self.score += 100 * lines_cleared ** 2
+        self.score_changed = True  # 标记分数发生变化
+
 
 class Particle:
     """
@@ -316,6 +324,11 @@ class GameRenderer:
 
         self.grid_surface = self._create_grid_surface()  # 预生成网格 Surface
 
+                
+        # 缓存分数和最高分的文本 Surface
+        self.score_surface = None
+        self.high_score_surface = None
+
     def draw_block(self, x: int, y: int, color: Tuple[int, int, int], alpha: int = 255) -> None:
         """
         在屏幕上绘制一个单独的方块，可以选择设置透明度。
@@ -371,16 +384,23 @@ class GameRenderer:
     def draw_score(self, score_manager: ScoreManager) -> None:
         """
         在屏幕上绘制得分和高分。
-
-        Args:
-            score_manager (ScoreManager): 得分管理器对象。
+        只有当分数或最高分发生变化时，才重新渲染文本。
         """
-        formatted_score = f"{score_manager.score:,}"
-        formatted_high_score = f"{score_manager.high_score:,}"
-        score_text = self.font.render(f"分数: {formatted_score}", True, (255, 255, 255))
-        high_score_text = self.font.render(f"最高分: {formatted_high_score}", True, (255, 255, 255))
-        self.screen.blit(score_text, (10, 10))
-        self.screen.blit(high_score_text, (10, 10 + int(self.config.SCREEN_WIDTH * 0.08)))
+        if score_manager.score_changed:
+            formatted_score = f"{score_manager.score:,}"
+            self.score_surface = self.font.render(f"分数: {formatted_score}", True, (255, 255, 255))
+            score_manager.score_changed = False  # 重置标记
+
+        if score_manager.high_score_changed:
+            formatted_high_score = f"{score_manager.high_score:,}"
+            self.high_score_surface = self.font.render(f"最高分: {formatted_high_score}", True, (255, 255, 255))
+            score_manager.high_score_changed = False  # 重置标记
+
+        # 绘制缓存的分数和最高分文本
+        if self.score_surface:
+            self.screen.blit(self.score_surface, (10, 10))
+        if self.high_score_surface:
+            self.screen.blit(self.high_score_surface, (10, 10 + int(self.config.SCREEN_WIDTH * 0.08)))
 
     def draw_next_piece(self, tetromino: Tetromino, config: GameConfig) -> None:
         """
@@ -675,7 +695,7 @@ class TetrisGame:
         if self.cleared_lines:
             self.is_clearing = True
             self.clearing_animation_progress = 0.0
-            self.score_manager.score += 100 * len(self.cleared_lines) ** 2
+            self.score_manager.add_score(len(self.cleared_lines))  # 增加分数
             self.explosion_sound.play()  # 播放爆炸音效
 
             # 触发粒子效果
