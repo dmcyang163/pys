@@ -688,10 +688,17 @@ class TetrisGame:
 
     def _render_game_over(self) -> None:
         """
-        渲染游戏结束界面。
+        渲染游戏结束界面，背景为半透明黑色。
         """
         if not hasattr(self, 'game_over_surface'):  # 预渲染游戏结束界面
+            # 创建一个带有透明通道的 Surface
             self.game_over_surface = pygame.Surface((self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT), pygame.SRCALPHA)
+            
+            # 绘制半透明黑色背景
+            background_color = (0, 0, 0, 128)  # 黑色，50% 透明度 (0-255)
+            pygame.draw.rect(self.game_over_surface, background_color, (0, 0, self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT))
+
+            # 渲染文本
             game_over_text = self.renderer.font.render("游戏结束", True, (255, 255, 255))
             score_text = self.renderer.font.render(f"分数: {self.score_manager.score:,}", True, (255, 255, 255))
             high_score_text = self.renderer.font.render(f"最高分: {self.score_manager.high_score:,}", True, (255, 255, 255))
@@ -712,55 +719,61 @@ class TetrisGame:
 
     def game_loop(self) -> None:
         """主游戏循环"""
-        clock = pygame.time.Clock()
-        self.running = True
-        self.new_piece()
+        try:
+            clock = pygame.time.Clock()
+            self.running = True
+            self.new_piece()
 
-        while self.running:
-            current_time = pygame.time.get_ticks()
-            self.running = self.input_handler.handle_input()
+            while self.running:
+                current_time = pygame.time.get_ticks()
+                self.running = self.input_handler.handle_input()
 
-            if self.game_state == GameState.PLAYING:
-                if self.is_clearing:
-                    self._handle_clearing_animation(current_time, self.config.ANIMATION_DURATION)
-                else:
-                    self._handle_piece_movement(current_time)
+                if self.game_state == GameState.PLAYING:
+                    if self.is_clearing:
+                        self._handle_clearing_animation(current_time, self.config.ANIMATION_DURATION)
+                    else:
+                        self._handle_piece_movement(current_time)
 
-                # 更新粒子系统
-                self.particle_system.update()
+                    # 更新粒子系统
+                    self.particle_system.update()
 
-                self._render_game()
+                    self._render_game()
 
-            elif self.game_state == GameState.GAME_OVER:
-                # 显示游戏结束界面
-                self._render_game_over()  # 调用预渲染的游戏结束界面
+                elif self.game_state == GameState.GAME_OVER:
+                    # 显示游戏结束界面
+                    self._render_game_over()  # 调用预渲染的游戏结束界面
 
-                # 清空事件队列
-                pygame.event.clear()
+                    # 清空事件队列
+                    pygame.event.clear()
 
-                # 等待用户按下 R 键重新开始游戏或 Q 键退出游戏
-                waiting_for_restart = True
-                while waiting_for_restart:
-                    for event in pygame.event.get():
-                        if event.type == pygame.QUIT:
-                            self.running = False
-                            waiting_for_restart = False
-                        if event.type == pygame.KEYDOWN:
-                            key = pygame.key.name(event.key).lower()
-                            if key in ['r', 'ｒ']:
-                                self.__init__()
-                                waiting_for_restart = False
-                                self.game_state = GameState.PLAYING
-                                self.new_piece()
-                            elif key in ['q', 'ｑ']:
+                    # 等待用户按下 R 键重新开始游戏或 Q 键退出游戏
+                    waiting_for_restart = True
+                    while waiting_for_restart:
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT:
                                 self.running = False
                                 waiting_for_restart = False
+                            if event.type == pygame.KEYDOWN:
+                                key = pygame.key.name(event.key).lower()
+                                if key in ['r', 'ｒ']:
+                                    self.__init__()
+                                    waiting_for_restart = False
+                                    self.game_state = GameState.PLAYING
+                                    self.new_piece()
+                                elif key in ['q', 'ｑ']:
+                                    self.running = False
+                                    waiting_for_restart = False
 
-            self.last_frame_time = current_time
-            clock.tick(30)
+                self.last_frame_time = current_time
+                clock.tick(30)
 
-        pygame.mixer.music.stop()
-        pygame.quit()
+        finally:
+            # 清理资源
+            pygame.mixer.music.stop()
+            pygame.quit()
+            self.particle_pool = None
+            self.particle_system = None
+
 
 
         # 清理粒子池
