@@ -684,7 +684,8 @@ class TetrisGame:
 
         self.renderer.draw_next_piece(self.next_tetromino, self.config)
         self.renderer.draw_score(self.score_manager)
-        pygame.display.flip()
+        # pygame.display.flip()
+        pygame.display.update()  # 只更新变化的部分
 
     def _render_game_over(self) -> None:
         """
