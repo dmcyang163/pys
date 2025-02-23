@@ -14,6 +14,8 @@ def package_game(script_name, packer='pyinstaller', upx_dir=None, nuitka_python_
         nuitka_python_binary (str): Nuitka 使用的 Python 解释器可执行文件的路径，可选。  (不再使用)
     """
     base_dir = os.path.dirname(os.path.abspath(script_name))  # 脚本所在的目录
+    output_dir = os.path.join(base_dir, "output") # 创建一个名为 output 的目录用于存放打包结果
+    os.makedirs(output_dir, exist_ok=True) # 确保 output 目录存在
 
     add_data = []
     add_data.append(f"sounds{os.pathsep}sounds")
@@ -21,10 +23,15 @@ def package_game(script_name, packer='pyinstaller', upx_dir=None, nuitka_python_
     add_data.append(f"textures{os.pathsep}textures")
 
     if packer == 'pyinstaller':
+        pyinstaller_output_dir = os.path.join(output_dir, "pyinstaller") # pyinstaller 的输出目录
+        os.makedirs(pyinstaller_output_dir, exist_ok=True) # 确保目录存在
+
         command = [
             "pyinstaller",
             "--onefile",
             "--noconsole",
+            f"--distpath={pyinstaller_output_dir}", # 指定输出目录
+            f"--workpath={os.path.join(pyinstaller_output_dir, 'build')}" # 指定临时文件目录
         ]
         for data in add_data:
             command.append(f"--add-data={data}")
@@ -39,6 +46,9 @@ def package_game(script_name, packer='pyinstaller', upx_dir=None, nuitka_python_
             print(f"PyInstaller 打包失败: {e}")
 
     elif packer == 'nuitka':
+        nuitka_output_dir = os.path.join(output_dir, "nuitka") # nuitka 的输出目录
+        os.makedirs(nuitka_output_dir, exist_ok=True) # 确保目录存在
+
         # 查找虚拟环境中的 nuitka.cmd
         nuitka_executable = None
         venv_path = os.path.join(os.path.dirname(base_dir), ".venv", "Scripts", "nuitka.cmd")
@@ -56,7 +66,8 @@ def package_game(script_name, packer='pyinstaller', upx_dir=None, nuitka_python_
             "--standalone",
             "--disable-console",
             "--follow-imports",
-            "--output-filename=tetris.exe", # 指定输出文件名
+            f"--output-filename=tetris.exe", # 指定输出文件名
+            f"--output-dir={nuitka_output_dir}" # 指定输出目录
         ]
 
         for data in add_data:
@@ -79,14 +90,18 @@ def run_packaged_game(script_name, packer='pyinstaller'):
         script_name (str): 游戏脚本的文件名。
         packer (str): 打包工具，可以是 'pyinstaller' 或 'nuitka'，默认为 'pyinstaller'。
     """
+    base_dir = os.path.dirname(os.path.abspath(script_name))
+    output_dir = os.path.join(base_dir, "output")
+
     if packer == 'pyinstaller':
+        pyinstaller_output_dir = os.path.join(output_dir, "pyinstaller")
         exe_name = os.path.splitext(os.path.basename(script_name))[0] + ".exe"
-        dist_dir = "dist"
-        exe_path = os.path.join(dist_dir, exe_name)
+        exe_path = os.path.join(pyinstaller_output_dir, exe_name)
     elif packer == 'nuitka':
+        nuitka_output_dir = os.path.join(output_dir, "nuitka")
         exe_name = "tetris.exe" # Nuitka output name is fixed
         script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
-        dist_dir = f"{script_name_without_ext}.dist"  # Nuitka 默认在 <script_name>.dist 目录生成可执行文件
+        dist_dir = os.path.join(nuitka_output_dir, f"{script_name_without_ext}.dist") # Nuitka 默认在 <script_name>.dist 目录生成可执行文件
         exe_path = os.path.join(dist_dir, exe_name)
     else:
         print("无效的打包工具，请选择 'pyinstaller' 或 'nuitka'。")
