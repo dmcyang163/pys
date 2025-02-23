@@ -12,6 +12,7 @@ class GameRenderer:
         self.config = config
         self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
         pygame.display.set_caption("俄罗斯方块 - 分数显示版")
+        # pygame.font.init()
         self.font = pygame.font.Font(os.path.join("fonts", "MI_LanTing_Regular.ttf"), int(config.SCREEN_WIDTH * 0.08))
         self.block_surface = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), pygame.SRCALPHA)
         self.grid_line_color = config.GRID_LINE_COLOR

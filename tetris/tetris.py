@@ -1,3 +1,4 @@
+import sys
 import pygame
 import os
 from game_config import GameConfig
@@ -9,6 +10,10 @@ from renderer import GameRenderer
 from input_handler import InputHandler
 from game_state import GameState
 
+# 更改工作目录
+if hasattr(sys, '_MEIPASS'):
+    os.chdir(sys._MEIPASS)
+    
 class TetrisGame:
     def __init__(self):
         pygame.init()
