@@ -39,6 +39,10 @@ class TetrisGame:
         self.is_clearing = False
         self.explosion_particles = []
         self.game_state = GameState.PLAYING
+
+        self.game_over_surface = None  # game_over 的 Surface
+        self.pause_surface = None  # 暂停界面的 Surface
+
         pygame.mixer.music.load(ttools.get_resource_path(os.path.join("sounds", "tetris_music.mp3")))
         pygame.mixer.music.play(-1)
         self.explosion_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("sounds", "explosion.wav")))
@@ -167,6 +171,47 @@ class TetrisGame:
         self.renderer.draw_score(self.score_manager)
         pygame.display.update()
 
+    def toggle_pause(self) -> None:
+        if self.game_state == GameState.PLAYING:
+            self.game_state = GameState.PAUSED
+            print("游戏已暂停")
+        elif self.game_state == GameState.PAUSED:
+            self.game_state = GameState.PLAYING
+            print("游戏已恢复")
+
+    def _create_pause_surface(self) -> None:
+        """
+        创建暂停界面的 Surface。
+        """
+        self.pause_surface = pygame.Surface((self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT), pygame.SRCALPHA)
+        self.pause_surface.fill((0, 0, 0, 128))  # 黑色半透明覆盖层 (RGBA: 0, 0, 0, 128)
+
+        # 绘制“游戏暂停中”文字
+        pause_text = self.renderer.font.render("游戏暂停中", True, (255, 255, 255))  # 白色文字
+        text_rect = pause_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2))
+
+        # 将文字绘制到 Surface 上
+        self.pause_surface.blit(pause_text, text_rect)
+
+    def _render_pause_screen(self) -> None:
+        """
+        渲染暂停界面：在当前画面上覆盖一个半透明的遮罩，并显示“游戏暂停中”。
+        """
+        if not self.is_paused_rendered:
+            if self.pause_surface is None:
+                self._create_pause_surface()  # 如果 Surface 未创建，则先创建
+
+            # 先绘制当前游戏画面
+            self._render_game()
+
+            self.renderer.screen.blit(self.pause_surface, (0, 0))
+
+            # 更新屏幕显示
+            pygame.display.flip()
+
+            # 设置标志位，表示已经绘制了暂停界面
+            self.is_paused_rendered = True
+
     def _render_game_over(self) -> None:
         """
         渲染游戏结束界面。
@@ -205,6 +250,9 @@ class TetrisGame:
                 self.running = self.input_handler.handle_input()
 
                 if self.game_state == GameState.PLAYING:
+                    # 重置暂停界面绘制标志
+                    self.is_paused_rendered = False
+
                     if self.is_clearing:
                         self._handle_clearing_animation(current_time, self.config.ANIMATION_DURATION)
                     else:
@@ -212,6 +260,9 @@ class TetrisGame:
 
                     self.particle_system.update()
                     self._render_game()
+
+                elif self.game_state == GameState.PAUSED:
+                    self._render_pause_screen()  # 渲染暂停界面
 
                 elif self.game_state == GameState.GAME_OVER:
                     self._render_game_over()
@@ -232,6 +283,10 @@ class TetrisGame:
                                 elif key in ['q', 'ｑ']:
                                     self.running = False
                                     waiting_for_restart = False
+                
+                # 统一调用 pygame.display.flip()
+                if self.game_state != GameState.PAUSED:
+                    pygame.display.flip()
 
                 self.last_frame_time = current_time
                 clock.tick(30)

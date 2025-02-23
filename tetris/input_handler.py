@@ -21,6 +21,8 @@ class InputHandler:
 
             if self.game.game_state == GameState.PLAYING:
                 self._handle_playing_event(event)
+            elif self.game.game_state == GameState.PAUSED:
+                self._handle_paused_event(event)  # 处理暂停状态下的输入
             elif self.game.game_state == GameState.GAME_OVER:
                 self._handle_game_over_event(event)
 
@@ -43,6 +45,8 @@ class InputHandler:
                 self.game.down_key_pressed = True
             elif event.key == pygame.K_UP:
                 self._handle_rotate()
+            elif event.key == pygame.K_p:  # 按下 P 键暂停
+                self.game.toggle_pause()
 
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
@@ -51,6 +55,16 @@ class InputHandler:
                 self.game.right_key_pressed = False
             elif event.key == pygame.K_DOWN:
                 self.game.down_key_pressed = False
+
+    def _handle_paused_event(self, event) -> None:
+        """
+        处理暂停状态下的输入事件。
+        """
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_p:  # 按下 P 键恢复游戏
+                self.game.toggle_pause()
+            elif event.key == pygame.K_q:  # 按下 Q 键退出游戏
+                self.game.running = False
 
     def _handle_joystick_input(self) -> None:
         """
@@ -61,6 +75,7 @@ class InputHandler:
         axis_y = self.game.joystick.get_axis(1)  # 左摇杆的垂直轴
         button_a = self.game.joystick.get_button(0)  # A 按钮
         button_b = self.game.joystick.get_button(1)  # B 按钮
+        button_start = self.game.joystick.get_button(7)  # START 按钮
 
         # 处理左右移动
         if axis_x < -0.5:  # 左摇杆向左
@@ -82,6 +97,10 @@ class InputHandler:
         # 处理旋转
         if button_a:  # A 按钮旋转
             self._handle_rotate()
+
+        # 处理暂停
+        if button_start:  # START 按钮暂停
+            self.game.toggle_pause()
 
     def _handle_rotate(self) -> None:
         """
