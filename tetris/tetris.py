@@ -173,7 +173,7 @@ class TetrisGame:
         """
         if not hasattr(self, 'game_over_surface'):
             self.game_over_surface = pygame.Surface((self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT), pygame.SRCALPHA)
-            background_color = (0, 0, 0, 128)
+            background_color = (0, 0, 0, 30)
             pygame.draw.rect(self.game_over_surface, background_color, (0, 0, self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT))
 
             game_over_text = self.renderer.font.render("游戏结束", True, (255, 255, 255))

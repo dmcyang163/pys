@@ -46,7 +46,7 @@ class GameRenderer:
     def draw_block(self, x: int, y: int, color: Tuple[int, int, int], alpha: int = 255) -> None:
         self.block_surface.fill((0, 0, 0, 0))
         pygame.draw.rect(self.block_surface, color + (alpha,), (0, 0, self.config.BLOCK_SIZE, self.config.BLOCK_SIZE))
-        pygame.draw.rect(self.block_surface, (50, 50, 50), (0, 0, self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), 1)
+        pygame.draw.rect(self.block_surface, (40, 40, 40), (0, 0, self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), 1)
         self.screen.blit(self.block_surface, (x * self.config.BLOCK_SIZE, y * self.config.BLOCK_SIZE))
 
     # def draw_block(self, x: int, y: int, color: Tuple[int, int, int], alpha: int = 255) -> None:

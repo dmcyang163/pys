@@ -15,7 +15,7 @@ class GameConfig:
     PREVIEW_Y: int = 50
     PREVIEW_SIZE: int = 4
     NUM_COLORS: int = 12
-    GRID_LINE_COLOR: Tuple[int, int, int] = (50, 50, 50)
+    GRID_LINE_COLOR: Tuple[int, int, int] = (40, 40, 40)
     BACKGROUND_COLOR: Tuple[int, int, int] = (30, 30, 30)
     EXPLOSION_PARTICLE_COUNT: int = 30
     ANIMATION_DURATION: int = 300
