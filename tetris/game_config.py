@@ -33,9 +33,30 @@ class GameConfig:
         self.COLORS = self._generate_colors(self.NUM_COLORS)
 
     def _generate_colors(self, num_colors: int) -> List[Tuple[int, int, int]]:
+        """
+        生成霓虹风格的颜色方案。
+        """
         colors = []
         for i in range(num_colors):
-            hue = i / num_colors
-            r, g, b = [int(x * 255) for x in colorsys.hsv_to_rgb(hue, 0.8, 0.8)]
+            # 使用 HSV 颜色空间，固定高饱和度和高亮度
+            hue = i / num_colors  # 色调在 0 到 1 之间变化
+            saturation = 1.0  # 高饱和度
+            value = 1.0  # 高亮度
+            r, g, b = [int(x * 255) for x in colorsys.hsv_to_rgb(hue, saturation, value)]
             colors.append((r, g, b))
         return colors
+    
+    def _generate_colors(self, num_colors: int) -> List[Tuple[int, int, int]]:
+        """
+        生成糖果风格的颜色方案。
+        """
+        colors = []
+        for i in range(num_colors):
+            # 使用 HSV 颜色空间，调整饱和度和亮度
+            hue = i / num_colors  # 色调在 0 到 1 之间变化
+            saturation = 0.6  # 中等饱和度
+            value = 0.9  # 高亮度
+            r, g, b = [int(x * 255) for x in colorsys.hsv_to_rgb(hue, saturation, value)]
+            colors.append((r, g, b))
+        return colors
+    
