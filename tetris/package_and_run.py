@@ -2,14 +2,15 @@ import os
 import subprocess
 import argparse
 
-def package_game(script_name):
+def package_game(script_name, upx_dir=None):
     """
-    使用pyinstaller打包游戏脚本，不显示控制台窗口，并包含 sounds, fonts, textures 文件夹
+    使用pyinstaller打包游戏脚本，不显示控制台窗口，并包含 sounds, fonts, textures 文件夹，并使用 UPX 压缩
     :param script_name: 游戏脚本的文件名 (例如: my_game.py)
+    :param upx_dir: UPX 的安装目录 (例如: D:\\soft\\dev\\upx-4.2.4-win64)
     """
     try:
         base_name, ext = os.path.splitext(script_name)  # 分离文件名和扩展名
-        
+
         # 构建 add-data 参数
         add_data = []
         add_data.append("sounds:sounds")
@@ -25,6 +26,16 @@ def package_game(script_name):
         for data in add_data:
             command.extend(['--add-data', data])
 
+        # 添加 UPX 压缩
+        if upx_dir:
+            if os.path.exists(upx_dir):
+                command.extend(['--upx-dir', upx_dir])
+                print(f"使用 UPX 压缩，UPX 目录：{upx_dir}")
+            else:
+                print(f"UPX 目录 {upx_dir} 不存在。将不使用 UPX 压缩。")
+        else:
+            print("未指定 UPX 目录。将不使用 UPX 压缩。")
+
         command.append(script_name)
 
         subprocess.run(command)
@@ -32,10 +43,11 @@ def package_game(script_name):
     except Exception as e:
         print(f"打包 {script_name} 过程中出现错误: {e}")
 
-def run_packaged_game(script_name):
+def run_packaged_game(script_name, upx_dir=None):
     """
     运行打包后的游戏
     :param script_name: 游戏脚本的文件名 (例如: my_game.py)
+    :param upx_dir: UPX 的安装目录 (例如: D:\\soft\\dev\\upx-4.2.4-win64) - 此参数未使用，为了保持函数签名一致
     """
     base_name, ext = os.path.splitext(script_name)  # 分离文件名和扩展名
     if os.name == 'nt':  # Windows系统
@@ -58,13 +70,20 @@ if __name__ == "__main__":
     # 添加 script_name 参数
     parser.add_argument("script_name", help="游戏脚本的文件名 (例如: my_game.py)")
 
+    # 添加 upx_dir 参数
+    parser.add_argument("--upx_dir", help="UPX 的安装目录 (例如: D:\\soft\\dev\\upx-4.2.4-win64)")
+
     # 解析命令行参数
     args = parser.parse_args()
 
     # 获取游戏脚本的文件名
     game_script = args.script_name
 
+    # 获取 UPX 的安装目录
+    upx_dir = args.upx_dir
+
     # 先打包游戏
-    package_game(game_script)
+    package_game(game_script, upx_dir)
+
     # 再运行打包后的游戏
-    run_packaged_game(game_script)
+    run_packaged_game(game_script, upx_dir)
