@@ -11,10 +11,7 @@ from input_handler import InputHandler
 from game_state import GameState
 
 import ttools
-# # 更改工作目录
-# if hasattr(sys, '_MEIPASS'):
-#     print("sys._MEIPASS is defined:", sys._MEIPASS)
-#     os.chdir(sys._MEIPASS)
+
 
     
 class TetrisGame:
@@ -36,7 +33,7 @@ class TetrisGame:
         self.left_key_pressed = False
         self.right_key_pressed = False
         self.last_move_time = 0
-        self.move_delay = 150
+        self.move_delay = 100
         self.cleared_lines = []
         self.clearing_animation_progress = 0.0
         self.is_clearing = False
@@ -129,11 +126,12 @@ class TetrisGame:
                 self._handle_piece_landed()
 
     def _handle_piece_landed(self) -> None:
-        """
-        处理方块落地的逻辑。
-        """
-        self.game_board.merge_piece(self.current_tetromino)
-        self.cleared_lines = self.game_board.clear_lines()
+        if not self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x, self.current_tetromino.y):
+            self.game_board.merge_piece(self.current_tetromino)
+            # 检测满行但不删除
+            self.cleared_lines = self.game_board.clear_lines()
+
+
         if self.cleared_lines:
             self.is_clearing = True
             self.clearing_animation_progress = 0.0
@@ -154,7 +152,8 @@ class TetrisGame:
             if not self.new_piece():
                 self.game_state = GameState.GAME_OVER
         self.last_fall_time = pygame.time.get_ticks()
-
+    
+    
     def _render_game(self) -> None:
         self.renderer.screen.fill(self.renderer.background_color)
         self.renderer.draw_grid()
