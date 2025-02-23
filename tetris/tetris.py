@@ -10,12 +10,12 @@ from renderer import GameRenderer
 from input_handler import InputHandler
 from game_state import GameState
 
-# 更改工作目录
-if hasattr(sys, '_MEIPASS'):
-    print("sys._MEIPASS is defined:", sys._MEIPASS)
-    os.chdir(sys._MEIPASS)
-else:
-    print("sys._MEIPASS is not defined")
+import ttools
+# # 更改工作目录
+# if hasattr(sys, '_MEIPASS'):
+#     print("sys._MEIPASS is defined:", sys._MEIPASS)
+#     os.chdir(sys._MEIPASS)
+
     
 class TetrisGame:
     def __init__(self):
@@ -42,9 +42,9 @@ class TetrisGame:
         self.is_clearing = False
         self.explosion_particles = []
         self.game_state = GameState.PLAYING
-        pygame.mixer.music.load(os.path.join("sounds", "tetris_music.mp3"))
+        pygame.mixer.music.load(ttools.get_resource_path(os.path.join("sounds", "tetris_music.mp3")))
         pygame.mixer.music.play(-1)
-        self.explosion_sound = pygame.mixer.Sound(os.path.join("sounds", "explosion.wav"))
+        self.explosion_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("sounds", "explosion.wav")))
         self.particle_pool = ParticlePool(max_particles=1000)
         self.particle_system = ParticleSystem(self.particle_pool)
 
