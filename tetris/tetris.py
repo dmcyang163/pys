@@ -12,7 +12,10 @@ from game_state import GameState
 
 # 更改工作目录
 if hasattr(sys, '_MEIPASS'):
+    print("sys._MEIPASS is defined:", sys._MEIPASS)
     os.chdir(sys._MEIPASS)
+else:
+    print("sys._MEIPASS is not defined")
     
 class TetrisGame:
     def __init__(self):
