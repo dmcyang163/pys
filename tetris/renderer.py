@@ -7,6 +7,7 @@ from board import Board
 from score_manager import ScoreManager
 from particle import Particle
 import ttools
+from particle import ParticleSystem
 
 
 class GameRenderer:
@@ -14,8 +15,10 @@ class GameRenderer:
         self.config = config
         self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
         pygame.display.set_caption("俄罗斯方块 - 分数显示版")
-        # pygame.font.init()
+        
+        # 加载字体，启用抗锯齿
         self.font = pygame.font.Font(ttools.get_resource_path(os.path.join("fonts", "MI_LanTing_Regular.ttf")), int(config.SCREEN_WIDTH * 0.08))
+        
         self.block_surface = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), pygame.SRCALPHA)
         self.grid_line_color = config.GRID_LINE_COLOR
         self.background_color = config.BACKGROUND_COLOR
@@ -24,65 +27,55 @@ class GameRenderer:
         self.high_score_surface = None
 
         # 加载玻璃纹理图片
-        # 加载玻璃纹理图片并缩放到方块大小
-        # 加载玻璃纹理图片并缩放到方块大小
         texture_path = os.path.join("textures", "block.png")
         if os.path.exists(texture_path):
-            print(f"纹理图片路径正确: {texture_path}")
             self.glass_texture = pygame.image.load(texture_path).convert()
             self.glass_texture = pygame.transform.scale(self.glass_texture, (self.config.BLOCK_SIZE, self.config.BLOCK_SIZE))
-            print(f"纹理缩放后尺寸: {self.glass_texture.get_size()}")
         else:
-            print(f"纹理图片路径错误: {texture_path}")
             self.glass_texture = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE))
             self.glass_texture.fill((255, 0, 0))  # 使用红色占位符
 
-        # 调试：直接绘制纹理到屏幕
-        # self.screen.blit(self.glass_texture, (0, 0))
-        # pygame.display.flip()
-        # pygame.time.wait(2000)  # 等待 2 秒，观察纹理是否正确显示
+        # 初始化暂停界面和游戏结束界面的 Surface
+        self.pause_surface = None
+        self.game_over_surface = None
+        self._init_pause_surface()
+        self._init_game_over_surface()
 
-        
+    def _init_pause_surface(self) -> None:
+        # 创建暂停界面的 Surface
+        self.pause_surface = pygame.Surface((self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT), pygame.SRCALPHA)
+        self.pause_surface.fill((0, 0, 0, 128))  # 黑色半透明遮罩
+
+        # 绘制静态文字（不需要动态更新的部分）
+        pause_text = self.font.render("游戏暂停中", True, (255, 255, 255))  # 启用抗锯齿
+        text_rect = pause_text.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2))
+        self.pause_surface.blit(pause_text, text_rect)
+
+    def _init_game_over_surface(self) -> None:
+        # 创建游戏结束界面的 Surface
+        self.game_over_surface = pygame.Surface((self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT), pygame.SRCALPHA)
+        self.game_over_surface.fill((0, 0, 0, 128))  # 黑色半透明遮罩
+
+        # 绘制静态文字
+        self._draw_static_text()
+
+    def _draw_static_text(self) -> None:
+        """绘制游戏结束界面的静态文字"""
+        game_over_text = self.font.render("游戏结束", True, (255, 255, 255))  # 启用抗锯齿
+        restart_text = self.font.render("按 R 重新开始", True, (255, 255, 255))  # 启用抗锯齿
+        quit_text = self.font.render("按 Q 退出游戏", True, (255, 255, 255))  # 启用抗锯齿
+
+        # 将静态文字绘制到 Surface 上
+        self.game_over_surface.blit(game_over_text, (self.config.SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, self.config.SCREEN_HEIGHT // 3))
+        self.game_over_surface.blit(restart_text, (self.config.SCREEN_WIDTH // 2 - restart_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 100))
+        self.game_over_surface.blit(quit_text, (self.config.SCREEN_WIDTH // 2 - quit_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 150))
+
     def draw_block(self, x: int, y: int, color: Tuple[int, int, int], alpha: int = 255) -> None:
         self.block_surface.fill((0, 0, 0, 0))
         pygame.draw.rect(self.block_surface, color + (alpha,), (0, 0, self.config.BLOCK_SIZE, self.config.BLOCK_SIZE))
         pygame.draw.rect(self.block_surface, (40, 40, 40), (0, 0, self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), 1)
         self.screen.blit(self.block_surface, (x * self.config.BLOCK_SIZE, y * self.config.BLOCK_SIZE))
 
-    # def draw_block(self, x: int, y: int, color: Tuple[int, int, int], alpha: int = 255) -> None:
-    #     block_size = self.config.BLOCK_SIZE
-    #     rect = pygame.Rect(x * block_size, y * block_size, block_size, block_size)
-
-    #     # 创建一个新的 Surface 用于绘制方块
-    #     surface = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
-
-    #     # 绘制渐变背景
-    #     for i in range(block_size):
-    #         ratio = i / block_size
-    #         gradient_color = (
-    #             int(color[0] * (1 - ratio) + color[0] * 0.8 * ratio),
-    #             int(color[1] * (1 - ratio) + color[1] * 0.8 * ratio),
-    #             int(color[2] * (1 - ratio) + color[2] * 0.8 * ratio),
-    #             alpha
-    #         )
-    #         pygame.draw.line(surface, gradient_color, (i, 0), (i, block_size))
-
-    #     # 添加纹理
-    #     texture_surface = self.glass_texture.copy()
-    #     texture_surface.fill(color + (alpha,), special_flags=pygame.BLEND_RGBA_MULT)
-    #     surface.blit(texture_surface, (0, 0))  # 将纹理绘制到 Surface 的左上角
-
-    #     # 调试：绘制纹理边框
-    #     # pygame.draw.rect(surface, (255, 0, 0), (0, 0, block_size, block_size), 1)  # 红色边框
-
-    #     # 将 Surface 绘制到屏幕上
-    #     self.screen.blit(surface, rect.topleft)
-
-    #     # 绘制边框
-    #     border_color = (max(0, color[0] - 50), max(0, color[1] - 50), max(0, color[2] - 50))
-    #     pygame.draw.rect(self.screen, border_color, rect, 1)
-
-   
     def draw_board(self, game_board: Board) -> None:
         for y, row in enumerate(game_board.grid):
             for x, cell in enumerate(row):
@@ -109,12 +102,12 @@ class GameRenderer:
     def draw_score(self, score_manager: ScoreManager) -> None:
         if score_manager.score_changed:
             formatted_score = f"{score_manager.score:,}"
-            self.score_surface = self.font.render(f"分数: {formatted_score}", True, (255, 255, 255))
+            self.score_surface = self.font.render(f"分数: {formatted_score}", True, (255, 255, 255))  # 启用抗锯齿
             score_manager.score_changed = False
 
         if score_manager.high_score_changed:
             formatted_high_score = f"{score_manager.high_score:,}"
-            self.high_score_surface = self.font.render(f"最高分: {formatted_high_score}", True, (255, 255, 255))
+            self.high_score_surface = self.font.render(f"最高分: {formatted_high_score}", True, (255, 255, 255))  # 启用抗锯齿
             score_manager.high_score_changed = False
 
         if self.score_surface:
@@ -129,3 +122,46 @@ class GameRenderer:
                     block_x = self.config.PREVIEW_X // self.config.BLOCK_SIZE + x
                     block_y = self.config.PREVIEW_Y // self.config.BLOCK_SIZE + y
                     self.draw_block(block_x, block_y, tetromino.color)
+
+    def render_game(self, game_board: Board, current_tetromino: Tetromino, next_tetromino: Tetromino, score_manager: ScoreManager, particle_system: ParticleSystem) -> None:
+        """
+        渲染游戏画面。
+        """
+        self.screen.fill(self.background_color)
+        self.draw_grid()
+        self.draw_board(game_board)
+        self.draw_piece(current_tetromino)
+        particle_system.draw(self.screen)
+        self.draw_next_piece(next_tetromino)
+        self.draw_score(score_manager)
+
+    def render_pause_screen(self, game_board: Board, current_tetromino: Tetromino, next_tetromino: Tetromino, score_manager: ScoreManager, particle_system: ParticleSystem) -> None:
+        # 先绘制当前游戏画面
+        self.render_game(game_board, current_tetromino, next_tetromino, score_manager, particle_system)
+
+        # 最后绘制暂停界面（遮罩和文字）
+        self.screen.blit(self.pause_surface, (0, 0))
+
+    def render_game_over(self, game_board: Board, current_tetromino: Tetromino, next_tetromino: Tetromino, score_manager: ScoreManager, particle_system: ParticleSystem) -> None:
+        print("Rendering game over screen...")
+
+        # 先绘制当前游戏画面
+        self.render_game(game_board, current_tetromino, next_tetromino, score_manager, particle_system)
+
+        # 清空 game_over_surface，避免文字叠加
+        self.game_over_surface.fill((0, 0, 0, 128))  # 重新填充半透明黑色遮罩
+
+        # 绘制静态文字
+        self._draw_static_text()
+
+        # 动态更新分数
+        score_text = self.font.render(f"分数: {score_manager.score:,}", True, (255, 255, 255))  # 启用抗锯齿
+        high_score_text = self.font.render(f"最高分: {score_manager.high_score:,}", True, (255, 255, 255))  # 启用抗锯齿
+
+        # 将动态文字绘制到 Surface 上
+        self.game_over_surface.blit(score_text, (self.config.SCREEN_WIDTH // 2 - score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2))
+        self.game_over_surface.blit(high_score_text, (self.config.SCREEN_WIDTH // 2 - high_score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 50))
+
+        # 最后绘制游戏结束界面（遮罩和文字）
+        self.screen.blit(self.game_over_surface, (0, 0))
+        print("Game Over Surface drawn at (0, 0)")
