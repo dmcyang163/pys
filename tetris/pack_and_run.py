@@ -188,27 +188,28 @@ def prepare_data_files(data_dir):
 from concurrent.futures import ProcessPoolExecutor
 
 def _process_item(data_dir, item):
-    """处理单个文件的辅助函数"""
-    return f"{os.path.join(data_dir, item)}{os.pathsep}{item}"
-
-from tqdm import tqdm  # 需要安装 tqdm 库
+    """
+    处理单个文件的辅助函数。
+    将文件的源路径和目标路径格式化为 PyInstaller/Nuitka 所需的格式。
+    """
+    source_path = os.path.join(data_dir, item)
+    dest_path = item  # 打包后的目标路径为 item，保持目录结构
+    return f"{source_path}{os.pathsep}{dest_path}"
 
 def prepare_data_files(data_dir):
     """准备要添加到打包文件中的数据文件"""
     add_data = []
     if data_dir:
-        files = os.listdir(data_dir)
+        # 使用进程池处理文件
         with ProcessPoolExecutor() as executor:
+            # 提交任务
             futures = [
                 executor.submit(_process_item, data_dir, item)
-                for item in files
+                for item in os.listdir(data_dir)
             ]
-            # 使用 tqdm 显示进度
-            for future in tqdm(futures, total=len(files), desc="处理数据文件"):
-                try:
-                    add_data.append(future.result())
-                except Exception as e:
-                    print(f"处理文件时出错: {e}")
+            # 获取结果
+            for future in futures:
+                add_data.append(future.result())
     return add_data
 
 def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False, data_dir=None):
