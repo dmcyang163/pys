@@ -191,20 +191,24 @@ def _process_item(data_dir, item):
     """处理单个文件的辅助函数"""
     return f"{os.path.join(data_dir, item)}{os.pathsep}{item}"
 
+from tqdm import tqdm  # 需要安装 tqdm 库
+
 def prepare_data_files(data_dir):
     """准备要添加到打包文件中的数据文件"""
     add_data = []
     if data_dir:
-        # 使用进程池处理文件
+        files = os.listdir(data_dir)
         with ProcessPoolExecutor() as executor:
-            # 提交任务
             futures = [
                 executor.submit(_process_item, data_dir, item)
-                for item in os.listdir(data_dir)
+                for item in files
             ]
-            # 获取结果
-            for future in futures:
-                add_data.append(future.result())
+            # 使用 tqdm 显示进度
+            for future in tqdm(futures, total=len(files), desc="处理数据文件"):
+                try:
+                    add_data.append(future.result())
+                except Exception as e:
+                    print(f"处理文件时出错: {e}")
     return add_data
 
 def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False, data_dir=None):
