@@ -174,6 +174,7 @@ def _package_with_nuitka(script_name, output_dir, add_data, onefile, upx_dir):
         return False
     return True
 
+
 def prepare_data_files(data_dir):
     """准备要添加到打包文件中的数据文件"""
     add_data = []
@@ -183,6 +184,27 @@ def prepare_data_files(data_dir):
             source_path = os.path.join(data_dir, item)
             dest_path = item  # 打包后的目标路径为 item，保持目录结构
             add_data.append(f"{source_path}{os.pathsep}{dest_path}")
+    return add_data
+from concurrent.futures import ProcessPoolExecutor
+
+def _process_item(data_dir, item):
+    """处理单个文件的辅助函数"""
+    return f"{os.path.join(data_dir, item)}{os.pathsep}{item}"
+
+def prepare_data_files(data_dir):
+    """准备要添加到打包文件中的数据文件"""
+    add_data = []
+    if data_dir:
+        # 使用进程池处理文件
+        with ProcessPoolExecutor() as executor:
+            # 提交任务
+            futures = [
+                executor.submit(_process_item, data_dir, item)
+                for item in os.listdir(data_dir)
+            ]
+            # 获取结果
+            for future in futures:
+                add_data.append(future.result())
     return add_data
 
 def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False, data_dir=None):
