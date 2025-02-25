@@ -6,6 +6,7 @@ import platform
 import sys
 import logging
 import shlex
+import ast  # 用于解析字符串为字典
 from concurrent.futures import ProcessPoolExecutor
 
 # 配置日志
@@ -136,16 +137,21 @@ def compress_with_upx(upx_dir, exe_path):
         logging.error(f"未找到 UPX 工具，请确保 UPX 已安装并路径正确: {upx_dir}")
 
 
-def package(script_names, packer='pyinstaller', upx_dir=None, onefile=False, data_dir=None):
+def package(script_names, packer='pyinstaller', upx_dir=None, onefile=False, data_dir=None, data_dir_map=None):
     """使用 pyinstaller 或 Nuitka 打包脚本，并包含资源文件，并使用 UPX 压缩."""
     base_dir = os.path.dirname(os.path.abspath(script_names[0]))
-    add_data = prepare_data_files(data_dir)
-
     output_dir = create_output_dir(base_dir, packer)
 
-    if packer == 'nuitka' and len(script_names) > 1:
-        # Nuitka 不支持一次性打包多个脚本，需要为每个脚本单独打包
-        for script_name in script_names:
+    for script_name in script_names:
+        # 优先使用 data_dir_map，如果不存在，则使用 data_dir
+        data_dir_to_use = data_dir_map.get(script_name) if data_dir_map and script_name in data_dir_map else data_dir
+
+        add_data = []
+        if data_dir_to_use:
+            add_data = prepare_data_files(data_dir_to_use)
+
+        if packer == 'nuitka':
+            # Nuitka 不支持一次性打包多个脚本，需要为每个脚本单独打包
             script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
             exe_ext = get_executable_extension()
             exe_name = script_name_without_ext + exe_ext
@@ -156,7 +162,8 @@ def package(script_names, packer='pyinstaller', upx_dir=None, onefile=False, dat
                 return
 
             command = [nuitka_executable] + build_nuitka_command([script_name], output_dir, add_data, onefile)
-            command.extend(["--output-filename", exe_name, script_name])
+            # 将 --output-filename 和 exe_name 作为一个整体添加到命令中
+            command.extend(["--output-filename=" + exe_name, script_name])
 
             try:
                 subprocess.run(command, check=True, cwd=os.path.dirname(os.path.abspath(script_name)))
@@ -169,32 +176,23 @@ def package(script_names, packer='pyinstaller', upx_dir=None, onefile=False, dat
 
             except subprocess.CalledProcessError as e:
                 logging.error(f"Nuitka 打包失败: {e}")
-    else:
-        # PyInstaller 或 Nuitka 单个脚本
-        if packer == 'pyinstaller':
-            command = build_pyinstaller_command(script_names, output_dir, add_data, onefile, upx_dir)
-        else:  # packer == 'nuitka'
-            nuitka_executable = get_nuitka_executable(os.path.dirname(os.path.abspath(script_names[0])))
-            if not nuitka_executable:
-                logging.error("获取 Nuitka 可执行文件失败。")
-                return
-            command = [nuitka_executable] + build_nuitka_command(script_names, output_dir, add_data, onefile)
-            command.extend(script_names)
+        else:
+            # PyInstaller
+            command = build_pyinstaller_command([script_name], output_dir, add_data, onefile, upx_dir)
 
-        try:
-            subprocess.run(command, check=True, cwd=os.path.dirname(os.path.abspath(script_names[0])))
+            try:
+                subprocess.run(command, check=True, cwd=os.path.dirname(os.path.abspath(script_name)))
 
-            if upx_dir:
-                for script_name in script_names:
+                if upx_dir:
                     script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
                     exe_ext = get_executable_extension()
                     exe_path = os.path.join(output_dir, script_name_without_ext + exe_ext)
                     compress_with_upx(upx_dir, exe_path)
 
-            logging.info(f"{packer} 打包成功: {script_names}")
+                logging.info(f"PyInstaller 打包成功: {script_name}")
 
-        except subprocess.CalledProcessError as e:
-            logging.error(f"{packer} 打包失败: {e}")
+            except subprocess.CalledProcessError as e:
+                logging.error(f"PyInstaller 打包失败: {e}")
 
 
 def _process_item(data_dir, item):
@@ -259,6 +257,18 @@ def validate_arguments(args):
     for script_name in args.script_names:
         if not os.path.exists(script_name):
             raise FileNotFoundError(f"脚本文件不存在: {script_name}")
+    if args.data_dir_map:
+        try:
+            data_dir_map = ast.literal_eval(args.data_dir_map)
+            if not isinstance(data_dir_map, dict):
+                raise ValueError("data_dir_map 必须是字典")
+            for script_name, data_dir in data_dir_map.items():
+                # 使用 os.path.normpath 处理路径
+                data_dir = os.path.normpath(data_dir)
+                if not os.path.exists(data_dir):
+                    raise FileNotFoundError(f"资源目录不存在: {data_dir}")
+        except (ValueError, SyntaxError) as e:
+            raise ValueError(f"data_dir_map 解析失败: {e}")
     if args.data_dir and not os.path.exists(args.data_dir):
         raise FileNotFoundError(f"资源目录不存在: {args.data_dir}")
     if args.upx_dir:
@@ -272,10 +282,13 @@ def parse_arguments():
     parser = argparse.ArgumentParser(
         description="使用 PyInstaller 或 Nuitka 打包 Python 脚本。\n\n"
                     "示例:\n"
-                    "  python your_script.py main.py script2.py --packer nuitka --onefile --data_dir data\n\n"
+                    "  python your_script.py 1.py --data_dir data1\n"
+                    "  python your_script.py 1.py 2.py 3.py --data_dir_map \"{'1.py': 'data1', '3.py': 'data2'}\"\n\n"
                     "注意:\n"
                     "  - 使用 Nuitka 需要先安装 Nuitka: pip install nuitka\n"
-                    "  - UPX 是一个可选的压缩工具，可以减小可执行文件的大小，需要单独下载并指定其目录。\n",
+                    "  - UPX 是一个可选的压缩工具，可以减小可执行文件的大小，需要单独下载并指定其目录。\n"
+                    "  - data_dir_map 是一个 Python 字典，键是脚本文件名，值是 data_dir。\n"
+                    "  - 如果同时指定了 --data_dir 和 --data_dir_map，则 --data_dir_map 的优先级更高。\n",
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("script_names", nargs='+', help="脚本的文件名")
@@ -300,7 +313,11 @@ def parse_arguments():
     )
     parser.add_argument(
         "--data_dir",
-        help="资源文件所在的目录 (可选)"
+        help="资源文件所在的目录 (可选，用于单个脚本)"
+    )
+    parser.add_argument(
+        "--data_dir_map",
+        help="资源文件目录的映射 (字典，键是脚本文件名，值是 data_dir)"
     )
 
     args = parser.parse_args()
@@ -308,6 +325,9 @@ def parse_arguments():
     try:
         validate_arguments(args)
     except FileNotFoundError as e:
+        print(f"参数验证失败: {e}")
+        sys.exit(1)
+    except ValueError as e:
         print(f"参数验证失败: {e}")
         sys.exit(1)
 
@@ -323,6 +343,15 @@ if __name__ == "__main__":
     onefile = args.onefile
     args_to_pass = args.args_to_pass
     data_dir = args.data_dir
+    data_dir_map_str = args.data_dir_map
 
-    package(script_names, packer, upx_dir, onefile=onefile, data_dir=data_dir)
+    data_dir_map = {}
+    if data_dir_map_str:
+        # 使用 eval 解析字符串，并处理路径
+        data_dir_map = ast.literal_eval(data_dir_map_str)
+        for script_name, data_dir in data_dir_map.items():
+            # 使用 os.path.normpath 处理路径
+            data_dir_map[script_name] = os.path.normpath(data_dir)
+
+    package(script_names, packer, upx_dir, onefile=onefile, data_dir=data_dir, data_dir_map=data_dir_map)
     run_packaged_program(script_names, packer, args_to_pass, onefile=onefile)
