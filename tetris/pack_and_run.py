@@ -23,7 +23,7 @@ def get_virtual_env_path():
         return venv_path
 
     # 2. 如果 VIRTUAL_ENV 不存在或无效，则使用 sys.prefix/sys.base_prefix
-    if sys.prefix != sys.base_prefix:
+    if getattr(sys, 'base_prefix', sys.prefix) != sys.prefix:
         return sys.prefix
 
     # 3. 如果以上两种方法都失败，则返回 None
@@ -51,6 +51,13 @@ def get_nuitka_executable(base_dir):
         return None
     return nuitka_executable
 
+def get_executable_extension():
+    """根据操作系统获取可执行文件后缀"""
+    if platform.system() == "Windows":
+        return ".exe"
+    else:
+        return ""  # Linux/macOS 下没有后缀
+
 def build_pyinstaller_command(script_name, output_dir, add_data, onefile, upx_dir):
     """构建 PyInstaller 打包命令"""
     command = [
@@ -76,11 +83,7 @@ def build_pyinstaller_command(script_name, output_dir, add_data, onefile, upx_di
 def build_nuitka_command(script_name, output_dir, add_data, onefile):
     """构建 Nuitka 打包命令"""
     script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
-    # 根据操作系统选择不同的可执行文件后缀
-    if platform.system() == "Windows":
-        exe_ext = ".exe"
-    else:
-        exe_ext = ""  # Linux/macOS 下没有后缀
+    exe_ext = get_executable_extension()  # 获取可执行文件后缀
     exe_name = script_name_without_ext + exe_ext
     command = [
         "--standalone",
@@ -161,11 +164,7 @@ def _package_with_nuitka(script_name, output_dir, add_data, onefile, upx_dir):
         # Nuitka 打包完成后，调用 UPX 压缩
         if upx_dir:
             script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
-            # 根据操作系统选择不同的可执行文件后缀
-            if platform.system() == "Windows":
-                exe_ext = ".exe"
-            else:
-                exe_ext = ""  # Linux/macOS 下没有后缀
+            exe_ext = get_executable_extension()  # 获取可执行文件后缀
             exe_name = script_name_without_ext + exe_ext
             exe_path = os.path.join(output_dir, exe_name)
             compress_with_upx(upx_dir, exe_path)
@@ -226,11 +225,7 @@ def run_packaged_game(script_name, packer='pyinstaller', args_to_pass=None, onef
     output_dir = os.path.join(base_dir, "output")
 
     script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
-    # 根据操作系统选择不同的可执行文件后缀
-    if platform.system() == "Windows":
-        exe_ext = ".exe"
-    else:
-        exe_ext = ""  # Linux/macOS 下没有后缀
+    exe_ext = get_executable_extension()  # 获取可执行文件后缀
     exe_name = script_name_without_ext + exe_ext
 
     if packer == 'pyinstaller':
@@ -243,12 +238,11 @@ def run_packaged_game(script_name, packer='pyinstaller', args_to_pass=None, onef
             exe_path = os.path.join(dist_dir, exe_name)
     elif packer == 'nuitka':
         nuitka_output_dir = os.path.join(output_dir, "nuitka")
-        # 优先查找 onefile 模式的 exe，如果不存在，则查找非 onefile 模式的 exe
         if onefile:
             exe_path = os.path.join(nuitka_output_dir, exe_name)
             if not os.path.exists(exe_path):
                 print("Onefile 模式打包的可执行文件不存在，尝试查找非 Onefile 模式的可执行文件...")
-                onefile = False # 切换到非 onefile 模式
+                onefile = False  # 切换到非 onefile 模式
         if not onefile:
             dist_dir = os.path.join(nuitka_output_dir, f"{script_name_without_ext}.dist") # Nuitka 默认在 <script_name>.dist 目录生成可执行文件
             exe_path = os.path.join(dist_dir, exe_name)
