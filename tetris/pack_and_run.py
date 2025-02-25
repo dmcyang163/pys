@@ -2,6 +2,29 @@ import argparse
 import os
 import subprocess
 import shutil
+import sys
+
+
+def get_virtual_env_path():
+    """
+    获取当前虚拟环境的路径，如果不在虚拟环境中则返回 None。
+    结合使用 VIRTUAL_ENV 环境变量和 sys.prefix/sys.base_prefix。
+    """
+    # 1. 检查 VIRTUAL_ENV 环境变量
+    venv_path = os.environ.get("VIRTUAL_ENV")
+    if venv_path and os.path.isdir(venv_path):  # 确保路径存在
+        return venv_path
+
+    # 2. 如果 VIRTUAL_ENV 不存在或无效，则使用 sys.prefix/sys.base_prefix
+    if sys.prefix != sys.base_prefix:
+        return sys.prefix
+
+    # 3. 如果以上两种方法都失败，则返回 None
+    return None
+
+def is_in_virtual_env():
+    """检查当前是否在虚拟环境中。"""
+    return get_virtual_env_path() is not None
 
 def create_output_dir(base_dir, packer):
     """创建输出目录"""
@@ -12,16 +35,21 @@ def create_output_dir(base_dir, packer):
 
 def get_nuitka_executable(base_dir):
     """获取 Nuitka 可执行文件路径"""
-    venv_path = os.path.join(os.path.dirname(base_dir), ".venv", "Scripts", "nuitka.cmd")
-    if os.path.exists(venv_path):
-        print(f"使用虚拟环境中的 Nuitka: {venv_path}")
-        return venv_path
-    else:
-        nuitka_executable = "nuitka"
-        if shutil.which(nuitka_executable) is None:
-            print("系统 PATH 中也未找到 Nuitka，请确保已安装并添加到 PATH。")
-            return None
-        return nuitka_executable
+    venv_path = get_virtual_env_path()  # 使用 get_virtual_env_path() 获取虚拟环境路径
+    if venv_path:
+        venv_nuitka_path = os.path.join(venv_path, "Scripts", "nuitka.cmd")  # 构建虚拟环境中的 Nuitka 路径
+        if os.path.exists(venv_nuitka_path):
+            print(f"使用虚拟环境中的 Nuitka: {venv_nuitka_path}")
+            return venv_nuitka_path
+        else:
+            print("虚拟环境中未找到 Nuitka，尝试使用系统 PATH 中的 Nuitka。")
+
+    nuitka_executable = "nuitka"
+    if shutil.which(nuitka_executable) is None:
+        print("系统 PATH 中也未找到 Nuitka，请确保已安装并添加到 PATH。")
+        return None
+    return nuitka_executable
+
 
 def build_pyinstaller_command(script_name, output_dir, add_data, onefile, upx_dir):
     """构建 PyInstaller 打包命令"""
