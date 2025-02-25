@@ -2,6 +2,7 @@ import argparse
 import os
 import subprocess
 import shutil
+import platform
 import sys
 
 def create_output_dir(base_dir, packer):
@@ -32,7 +33,12 @@ def get_nuitka_executable(base_dir):
     """获取 Nuitka 可执行文件路径"""
     venv_path = get_virtual_env_path()  # 使用 get_virtual_env_path() 获取虚拟环境路径
     if venv_path:
-        venv_nuitka_path = os.path.join(venv_path, "Scripts", "nuitka.cmd")  # 构建虚拟环境中的 Nuitka 路径
+        # 根据操作系统选择不同的 Nuitka 可执行文件
+        if platform.system() == "Windows":
+            nuitka_cmd = "nuitka.cmd"
+        else:
+            nuitka_cmd = "nuitka"  # Linux/macOS 下通常直接是 nuitka
+        venv_nuitka_path = os.path.join(venv_path, "Scripts", nuitka_cmd)  # 构建虚拟环境中的 Nuitka 路径
         if os.path.exists(venv_nuitka_path):
             print(f"使用虚拟环境中的 Nuitka: {venv_nuitka_path}")
             return venv_nuitka_path
@@ -70,7 +76,12 @@ def build_pyinstaller_command(script_name, output_dir, add_data, onefile, upx_di
 def build_nuitka_command(script_name, output_dir, add_data, onefile):
     """构建 Nuitka 打包命令"""
     script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
-    exe_name = script_name_without_ext + ".exe"
+    # 根据操作系统选择不同的可执行文件后缀
+    if platform.system() == "Windows":
+        exe_ext = ".exe"
+    else:
+        exe_ext = ""  # Linux/macOS 下没有后缀
+    exe_name = script_name_without_ext + exe_ext
     command = [
         "--standalone",
         "--windows-console-mode=disable",  # 使用新选项
@@ -150,7 +161,12 @@ def _package_with_nuitka(script_name, output_dir, add_data, onefile, upx_dir):
         # Nuitka 打包完成后，调用 UPX 压缩
         if upx_dir:
             script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
-            exe_name = script_name_without_ext + ".exe"
+            # 根据操作系统选择不同的可执行文件后缀
+            if platform.system() == "Windows":
+                exe_ext = ".exe"
+            else:
+                exe_ext = ""  # Linux/macOS 下没有后缀
+            exe_name = script_name_without_ext + exe_ext
             exe_path = os.path.join(output_dir, exe_name)
             compress_with_upx(upx_dir, exe_path)
 
@@ -210,7 +226,12 @@ def run_packaged_game(script_name, packer='pyinstaller', args_to_pass=None, onef
     output_dir = os.path.join(base_dir, "output")
 
     script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
-    exe_name = script_name_without_ext + ".exe"
+    # 根据操作系统选择不同的可执行文件后缀
+    if platform.system() == "Windows":
+        exe_ext = ".exe"
+    else:
+        exe_ext = ""  # Linux/macOS 下没有后缀
+    exe_name = script_name_without_ext + exe_ext
 
     if packer == 'pyinstaller':
         pyinstaller_output_dir = os.path.join(output_dir, "pyinstaller")
