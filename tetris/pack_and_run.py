@@ -137,63 +137,77 @@ def compress_with_upx(upx_dir, exe_path):
         logging.error(f"未找到 UPX 工具，请确保 UPX 已安装并路径正确: {upx_dir}")
 
 
+def _package_single_script(script_name, packer, output_dir, upx_dir, onefile, data_dir_to_use):
+    """打包单个脚本的辅助函数."""
+    add_data = []
+    if data_dir_to_use:
+        add_data = prepare_data_files(data_dir_to_use)
+
+    if packer == 'nuitka':
+        # Nuitka 不支持一次性打包多个脚本，需要为每个脚本单独打包
+        script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
+        exe_ext = get_executable_extension()
+        exe_name = script_name_without_ext + exe_ext
+
+        nuitka_executable = get_nuitka_executable(os.path.dirname(os.path.abspath(script_name)))
+        if not nuitka_executable:
+            logging.error("获取 Nuitka 可执行文件失败。")
+            return
+
+        command = [nuitka_executable] + build_nuitka_command([script_name], output_dir, add_data, onefile)
+        # 将 --output-filename 和 exe_name 作为一个整体添加到命令中
+        command.extend(["--output-filename=" + exe_name, script_name])
+
+        try:
+            subprocess.run(command, check=True, cwd=os.path.dirname(os.path.abspath(script_name)))
+
+            if upx_dir:
+                exe_path = os.path.join(output_dir, script_name_without_ext + exe_ext)
+                compress_with_upx(upx_dir, exe_path)
+
+            logging.info(f"Nuitka 打包成功: {script_name}")
+
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Nuitka 打包失败: {e}")
+    else:
+        # PyInstaller
+        command = build_pyinstaller_command([script_name], output_dir, add_data, onefile, upx_dir)
+
+        try:
+            subprocess.run(command, check=True, cwd=os.path.dirname(os.path.abspath(script_name)))
+
+            if upx_dir:
+                script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
+                exe_ext = get_executable_extension()
+                exe_path = os.path.join(output_dir, script_name_without_ext + exe_ext)
+                compress_with_upx(upx_dir, exe_path)
+
+            logging.info(f"PyInstaller 打包成功: {script_name}")
+
+        except subprocess.CalledProcessError as e:
+            logging.error(f"PyInstaller 打包失败: {e}")
+
+
 def package(script_names, packer='pyinstaller', upx_dir=None, onefile=False, data_dir=None, data_dir_map=None):
     """使用 pyinstaller 或 Nuitka 打包脚本，并包含资源文件，并使用 UPX 压缩."""
     base_dir = os.path.dirname(os.path.abspath(script_names[0]))
     output_dir = create_output_dir(base_dir, packer)
 
-    for script_name in script_names:
-        # 优先使用 data_dir_map，如果不存在，则使用 data_dir
-        data_dir_to_use = data_dir_map.get(script_name) if data_dir_map and script_name in data_dir_map else data_dir
+    # 使用 ProcessPoolExecutor 并行打包
+    with ProcessPoolExecutor() as executor:
+        futures = []
+        for script_name in script_names:
+            # 优先使用 data_dir_map，如果不存在，则使用 data_dir
+            data_dir_to_use = data_dir_map.get(script_name) if data_dir_map and script_name in data_dir_map else data_dir
+            # 提交打包任务到线程池
+            futures.append(executor.submit(
+                _package_single_script,
+                script_name, packer, output_dir, upx_dir, onefile, data_dir_to_use
+            ))
 
-        add_data = []
-        if data_dir_to_use:
-            add_data = prepare_data_files(data_dir_to_use)
-
-        if packer == 'nuitka':
-            # Nuitka 不支持一次性打包多个脚本，需要为每个脚本单独打包
-            script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
-            exe_ext = get_executable_extension()
-            exe_name = script_name_without_ext + exe_ext
-
-            nuitka_executable = get_nuitka_executable(os.path.dirname(os.path.abspath(script_name)))
-            if not nuitka_executable:
-                logging.error("获取 Nuitka 可执行文件失败。")
-                return
-
-            command = [nuitka_executable] + build_nuitka_command([script_name], output_dir, add_data, onefile)
-            # 将 --output-filename 和 exe_name 作为一个整体添加到命令中
-            command.extend(["--output-filename=" + exe_name, script_name])
-
-            try:
-                subprocess.run(command, check=True, cwd=os.path.dirname(os.path.abspath(script_name)))
-
-                if upx_dir:
-                    exe_path = os.path.join(output_dir, script_name_without_ext + exe_ext)
-                    compress_with_upx(upx_dir, exe_path)
-
-                logging.info(f"Nuitka 打包成功: {script_name}")
-
-            except subprocess.CalledProcessError as e:
-                logging.error(f"Nuitka 打包失败: {e}")
-        else:
-            # PyInstaller
-            command = build_pyinstaller_command([script_name], output_dir, add_data, onefile, upx_dir)
-
-            try:
-                subprocess.run(command, check=True, cwd=os.path.dirname(os.path.abspath(script_name)))
-
-                if upx_dir:
-                    script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
-                    exe_ext = get_executable_extension()
-                    exe_path = os.path.join(output_dir, script_name_without_ext + exe_ext)
-                    compress_with_upx(upx_dir, exe_path)
-
-                logging.info(f"PyInstaller 打包成功: {script_name}")
-
-            except subprocess.CalledProcessError as e:
-                logging.error(f"PyInstaller 打包失败: {e}")
-
+        # 等待所有任务完成
+        for future in futures:
+            future.result()
 
 def _process_item(data_dir, item):
     """处理单个文件，格式化为 PyInstaller/Nuitka 所需的格式."""
