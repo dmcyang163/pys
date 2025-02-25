@@ -4,6 +4,12 @@ import subprocess
 import shutil
 import sys
 
+def create_output_dir(base_dir, packer):
+    """创建输出目录"""
+    output_dir = os.path.join(base_dir, "output")
+    packer_output_dir = os.path.join(output_dir, packer)
+    os.makedirs(packer_output_dir, exist_ok=True)
+    return packer_output_dir
 
 def get_virtual_env_path():
     """
@@ -22,17 +28,6 @@ def get_virtual_env_path():
     # 3. 如果以上两种方法都失败，则返回 None
     return None
 
-def is_in_virtual_env():
-    """检查当前是否在虚拟环境中。"""
-    return get_virtual_env_path() is not None
-
-def create_output_dir(base_dir, packer):
-    """创建输出目录"""
-    output_dir = os.path.join(base_dir, "output")
-    packer_output_dir = os.path.join(output_dir, packer)
-    os.makedirs(packer_output_dir, exist_ok=True)
-    return packer_output_dir
-
 def get_nuitka_executable(base_dir):
     """获取 Nuitka 可执行文件路径"""
     venv_path = get_virtual_env_path()  # 使用 get_virtual_env_path() 获取虚拟环境路径
@@ -49,7 +44,6 @@ def get_nuitka_executable(base_dir):
         print("系统 PATH 中也未找到 Nuitka，请确保已安装并添加到 PATH。")
         return None
     return nuitka_executable
-
 
 def build_pyinstaller_command(script_name, output_dir, add_data, onefile, upx_dir):
     """构建 PyInstaller 打包命令"""
@@ -165,22 +159,26 @@ def _package_with_nuitka(script_name, output_dir, add_data, onefile, upx_dir):
         return False
     return True
 
-def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False):
+def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False, data_dir=None):
     """
-    使用 pyinstaller 或 Nuitka 打包游戏脚本，并包含 sounds, fonts, textures 文件夹，并使用 UPX 压缩。
+    使用 pyinstaller 或 Nuitka 打包游戏脚本，并包含 data_dir 目录下的文件，并使用 UPX 压缩。
 
     参数:
         script_name (str): 游戏脚本的文件名。
         packer (str): 打包工具，可以是 'pyinstaller' 或 'nuitka'，默认为 'pyinstaller'。
         upx_dir (str): UPX 压缩工具的目录路径，可选。  仅用于 PyInstaller。
         onefile (bool): 是否使用 Onefile 模式，默认为 False。
+        data_dir (str): 资源文件所在的目录，可选。
     """
     base_dir = os.path.dirname(os.path.abspath(script_name))  # 脚本所在的目录
-    add_data = [
-        f"sounds{os.pathsep}sounds",
-        f"fonts{os.pathsep}fonts",
-        f"textures{os.pathsep}textures"
-    ]
+    add_data = []
+
+    if data_dir:
+        # 遍历 data_dir 目录下的所有文件和子目录
+        for item in os.listdir(data_dir):
+            source_path = os.path.join(data_dir, item)
+            dest_path = item  # 打包后的目标路径为 item，保持目录结构
+            add_data.append(f"{source_path}{os.pathsep}{dest_path}")
 
     if packer == 'pyinstaller':
         output_dir = create_output_dir(base_dir, "pyinstaller")
@@ -277,6 +275,10 @@ def parse_arguments():
         nargs='*',
         help="传递给可执行文件的参数 (可选)"
     )
+    parser.add_argument(
+        "--data_dir",
+        help="资源文件所在的目录 (可选)"
+    )
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -289,9 +291,10 @@ if __name__ == "__main__":
     upx_dir = args.upx_dir
     onefile = args.onefile
     args_to_pass = args.args_to_pass
+    data_dir = args.data_dir
 
     # 先打包游戏
-    package_game(script_name, packer, upx_dir, onefile=onefile)
+    package_game(script_name, packer, upx_dir, onefile=onefile, data_dir=data_dir)
 
     # 再运行打包后的游戏
     run_packaged_game(script_name, packer, args_to_pass, onefile=onefile)
