@@ -174,6 +174,17 @@ def _package_with_nuitka(script_name, output_dir, add_data, onefile, upx_dir):
         return False
     return True
 
+def prepare_data_files(data_dir):
+    """准备要添加到打包文件中的数据文件"""
+    add_data = []
+    if data_dir:
+        # 遍历 data_dir 目录下的所有文件和子目录
+        for item in os.listdir(data_dir):
+            source_path = os.path.join(data_dir, item)
+            dest_path = item  # 打包后的目标路径为 item，保持目录结构
+            add_data.append(f"{source_path}{os.pathsep}{dest_path}")
+    return add_data
+
 def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False, data_dir=None):
     """
     使用 pyinstaller 或 Nuitka 打包游戏脚本，并包含 data_dir 目录下的文件，并使用 UPX 压缩。
@@ -186,14 +197,7 @@ def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False,
         data_dir (str): 资源文件所在的目录，可选。
     """
     base_dir = os.path.dirname(os.path.abspath(script_name))  # 脚本所在的目录
-    add_data = []
-
-    if data_dir:
-        # 遍历 data_dir 目录下的所有文件和子目录
-        for item in os.listdir(data_dir):
-            source_path = os.path.join(data_dir, item)
-            dest_path = item  # 打包后的目标路径为 item，保持目录结构
-            add_data.append(f"{source_path}{os.pathsep}{dest_path}")
+    add_data = prepare_data_files(data_dir)  # 调用 prepare_data_files 函数
 
     if packer == 'pyinstaller':
         output_dir = create_output_dir(base_dir, "pyinstaller")
