@@ -265,12 +265,27 @@ def run_packaged_game(script_name, packer='pyinstaller', args_to_pass=None, onef
     else:
         print(f"找不到打包后的游戏: {exe_path}，请先打包游戏。")
 
+def validate_arguments(args):
+    """
+    验证命令行参数是否有效。
+    """
+    # 检查脚本文件是否存在
+    if not os.path.exists(args.script_name):
+        raise FileNotFoundError(f"脚本文件不存在: {args.script_name}")
+
+    # 检查 data_dir 是否存在
+    if args.data_dir and not os.path.exists(args.data_dir):
+        raise FileNotFoundError(f"资源目录不存在: {args.data_dir}")
+
+    # 检查 upx_dir 是否包含有效的 UPX 可执行文件
+    if args.upx_dir:
+        upx_executable = os.path.join(args.upx_dir, "upx")
+        if not os.path.exists(upx_executable):
+            raise FileNotFoundError(f"UPX 可执行文件未找到: {upx_executable}")
+
 def parse_arguments():
     """
-    解析命令行参数。
-
-    返回:
-        argparse.Namespace: 包含解析后的参数的对象。
+    解析命令行参数，并验证参数的有效性。
     """
     parser = argparse.ArgumentParser(
         description="使用 PyInstaller 或 Nuitka 打包 Python 游戏。\n\n"
@@ -315,7 +330,19 @@ def parse_arguments():
              "  - 指定包含声音、图像、字体等资源的目录\n"
              "  - 脚本会自动将该目录下的所有文件和子目录打包到可执行文件中"
     )
-    return parser.parse_args()
+
+    # 解析参数
+    args = parser.parse_args()
+
+    # 验证参数
+    try:
+        validate_arguments(args)
+    except FileNotFoundError as e:
+        print(f"参数验证失败: {e}")
+        sys.exit(1)
+
+    return args
+
 
 if __name__ == "__main__":
     # 解析命令行参数
