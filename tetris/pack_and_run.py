@@ -24,7 +24,6 @@ class LowercaseAction(argparse.Action):
         else:
             setattr(namespace, self.dest, values)
 
-
 class CaseInsensitiveChoicesParser(argparse.ArgumentParser):
     """自定义 ArgumentParser 类，使其在比较 choices 时不区分大小写。"""
     def _check_value(self, action, value):
@@ -33,7 +32,6 @@ class CaseInsensitiveChoicesParser(argparse.ArgumentParser):
             tup = (value, ', '.join(map(repr, action.choices)))
             msg = "invalid choice: %r (choose from %s)" % tup
             raise argparse.ArgumentError(action, msg)
-
 
 class Packer:
     """打包工具的基类。"""
@@ -52,8 +50,10 @@ class Packer:
         add_data = {}  # 使用字典存储每个脚本的数据文件
         for script_name in self.script_names:
             add_data[script_name] = []
-            data_dir_to_use = self.data_dir_map.get(script_name)
-            if data_dir_to_use:
+            if self.data_dir:  # 只要有 data_dir，所有脚本都使用 data_dir
+                add_data[script_name].extend(self._process_data_dir(self.data_dir, script_name))
+            elif self.data_dir_map.get(script_name):
+                data_dir_to_use = self.data_dir_map.get(script_name)
                 add_data[script_name].extend(self._process_data_dir(data_dir_to_use, script_name))
         return add_data
 
@@ -140,7 +140,6 @@ class Packer:
             logging.warning(f"无法读取脚本 {script_name}: {e}")
             return False
 
-
 class PyInstallerPacker(Packer):
     """使用 PyInstaller 打包脚本。"""
     def __init__(self, script_names, output_dir, upx_dir=None, onefile=False, data_dir=None, data_dir_map=None):
@@ -186,7 +185,6 @@ class PyInstallerPacker(Packer):
     def _get_executable_extension(self):
         """根据操作系统获取可执行文件后缀。"""
         return ".exe" if platform.system() == "Windows" else ""
-
 
 class NuitkaPacker(Packer):
     """使用 Nuitka 打包脚本。"""
@@ -267,7 +265,6 @@ class NuitkaPacker(Packer):
         """根据操作系统获取可执行文件后缀。"""
         return ".exe" if platform.system() == "Windows" else ""
 
-
 class ProgramRunner:
     """运行打包后的程序。"""
     def __init__(self, script_names, packer='pyinstaller', args_to_pass=None, onefile=False, run=True):
@@ -320,10 +317,11 @@ class ProgramRunner:
             else:
                 logging.error(f"打包后的程序未找到: {exe_path}。请先打包。")
 
+        sys.exit(0) # 运行完成后退出
+
     def _get_executable_extension(self):
         """根据操作系统获取可执行文件后缀。"""
         return ".exe" if platform.system() == "Windows" else ""
-
 
 class ArgumentValidator:
     """验证命令行参数。"""
@@ -399,14 +397,7 @@ class ArgumentValidator:
                 else:
                     logging.warning(f"文件名 {key} 未匹配到任何脚本，跳过。")
 
-            # 如果 data_dir 为 None，则从 data_dir_map 中移除该脚本
-            # 这确保了只有明确指定了资源目录的脚本才会被添加到 data_dir_map 中
-            # 其他脚本将不会包含任何资源文件
-            #if data_dir is None and matched_script in data_dir_map:
-            #    del data_dir_map[matched_script]
-
         return data_dir_map
-
 
 class ArgumentParser:
     """解析命令行参数。"""
@@ -492,7 +483,6 @@ class ArgumentParser:
             sys.exit(1)
         return args
 
-
 class OutputDirectoryManager:
     """管理输出目录。"""
     def __init__(self, base_dir):
@@ -505,7 +495,6 @@ class OutputDirectoryManager:
         packer_output_dir = os.path.join(output_dir, packer)
         os.makedirs(packer_output_dir, exist_ok=True)
         return packer_output_dir
-
 
 def main():
     """主函数。"""
@@ -539,9 +528,6 @@ def main():
 
     runner = ProgramRunner(script_names, packer_name, args_to_pass, onefile, run)
     runner.run_program()
-
-    sys.exit(0)  # 运行完成后退出
-
 
 if __name__ == "__main__":
     main()
