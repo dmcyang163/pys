@@ -6,7 +6,7 @@ import platform
 import sys
 import logging
 import shlex
-import ast  # 用于解析字符串为字典
+import ast  # 导入 ast 模块
 from concurrent.futures import ProcessPoolExecutor
 
 # 配置日志
@@ -259,15 +259,13 @@ def validate_arguments(args):
             raise FileNotFoundError(f"脚本文件不存在: {script_name}")
     if args.data_dir_map:
         try:
-            data_dir_map = ast.literal_eval(args.data_dir_map)
-            if not isinstance(data_dir_map, dict):
-                raise ValueError("data_dir_map 必须是字典")
+            data_dir_map = parse_data_dir_map(args.data_dir_map, args.script_names)
             for script_name, data_dir in data_dir_map.items():
                 # 使用 os.path.normpath 处理路径
                 data_dir = os.path.normpath(data_dir)
                 if not os.path.exists(data_dir):
                     raise FileNotFoundError(f"资源目录不存在: {data_dir}")
-        except (ValueError, SyntaxError) as e:
+        except ValueError as e:
             raise ValueError(f"data_dir_map 解析失败: {e}")
     if args.data_dir and not os.path.exists(args.data_dir):
         raise FileNotFoundError(f"资源目录不存在: {args.data_dir}")
@@ -277,18 +275,57 @@ def validate_arguments(args):
             raise FileNotFoundError(f"UPX 可执行文件未找到: {upx_executable}")
 
 
+def parse_data_dir_map(data_dir_map_str, script_names):
+    """解析 data_dir_map 字符串为字典，支持序号和文件名作为键，并处理各种不规范的输入."""
+    data_dir_map = {}
+    items = data_dir_map_str.split(':')  # 使用冒号分割
+    if len(items) % 2 != 0:
+        logging.warning("data_dir_map 格式不正确，键值对数量不匹配，跳过")
+        return {}
+
+    for i in range(0, len(items), 2):
+        key = items[i].strip()
+        data_dir = items[i + 1].strip()
+
+        # 尝试将 key 转换为整数，如果成功，则认为是序号
+        try:
+            script_index = int(key) - 1  # 脚本索引从 1 开始，转换为从 0 开始
+            if 0 <= script_index < len(script_names):
+                script_name = script_names[script_index]
+                data_dir_map[script_name] = data_dir
+            else:
+                logging.warning(f"脚本序号 {key} 超出范围，跳过")
+        except ValueError:
+            # 如果转换失败，则认为是文件名
+            matched_script = None
+            for script_name in script_names:
+                if key in script_name:  # 模糊匹配文件名
+                    if matched_script is not None:
+                        logging.warning(f"文件名 {key} 匹配到多个脚本，请使用更精确的文件名或序号，跳过")
+                        matched_script = None
+                        break
+                    matched_script = script_name
+            if matched_script:
+                data_dir_map[matched_script] = data_dir
+            else:
+                logging.warning(f"文件名 {key} 未匹配到任何脚本，跳过")
+    return data_dir_map
+
+
 def parse_arguments():
     """解析命令行参数，并验证参数的有效性."""
     parser = argparse.ArgumentParser(
         description="使用 PyInstaller 或 Nuitka 打包 Python 脚本。\n\n"
                     "示例:\n"
                     "  python your_script.py 1.py --data_dir data1\n"
-                    "  python your_script.py 1.py 2.py 3.py --data_dir_map \"{'1.py': 'data1', '3.py': 'data2'}\"\n\n"
+                    "  python your_script.py 1.py 2.py 3.py --data_dir_map \"{'1': '.\\\\data1', '2': '.\\\\data2'}\"\n"
+                    "  python your_script.py 1.py 2.py 3.py --data_dir_map \"{'1.py': '.\\\\data1', '2.py': '.\\\\data2'}\"\n\n"
                     "注意:\n"
                     "  - 使用 Nuitka 需要先安装 Nuitka: pip install nuitka\n"
                     "  - UPX 是一个可选的压缩工具，可以减小可执行文件的大小，需要单独下载并指定其目录。\n"
-                    "  - data_dir_map 是一个 Python 字典，键是脚本文件名，值是 data_dir。\n"
-                    "  - 如果同时指定了 --data_dir 和 --data_dir_map，则 --data_dir_map 的优先级更高。\n",
+                    "  - data_dir_map 是一个字符串，格式为 Python 字典，例如 \"{'script_name': 'data_dir'}\"。\n"
+                    "    key 可以是脚本的序号（从 1 开始），也可以是脚本的文件名（可以不完整，但要能唯一匹配一个脚本）。\n"
+                    "  - 如果同时指定了 --data_dir 和 --data_dir_map，则 --data_dir 的优先级更高。\n",
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("script_names", nargs='+', help="脚本的文件名")
@@ -317,7 +354,7 @@ def parse_arguments():
     )
     parser.add_argument(
         "--data_dir_map",
-        help="资源文件目录的映射 (字典，键是脚本文件名，值是 data_dir)"
+        help="资源文件目录的映射 (字符串，格式为 Python 字典，例如 \"{'script_name': 'data_dir'}\")"
     )
 
     args = parser.parse_args()
@@ -347,11 +384,7 @@ if __name__ == "__main__":
 
     data_dir_map = {}
     if data_dir_map_str:
-        # 使用 eval 解析字符串，并处理路径
-        data_dir_map = ast.literal_eval(data_dir_map_str)
-        for script_name, data_dir in data_dir_map.items():
-            # 使用 os.path.normpath 处理路径
-            data_dir_map[script_name] = os.path.normpath(data_dir)
+        data_dir_map = parse_data_dir_map(data_dir_map_str, script_names)
 
     package(script_names, packer, upx_dir, onefile=onefile, data_dir=data_dir, data_dir_map=data_dir_map)
     run_packaged_program(script_names, packer, args_to_pass, onefile=onefile)
