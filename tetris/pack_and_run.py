@@ -182,7 +182,7 @@ def prepare_data_files(data_dir):
 
 
 def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False, data_dir=None):
-    """使用 pyinstaller 或 Nuitka 打包游戏脚本，并包含资源文件，并使用 UPX 压缩."""
+    """使用 pyinstaller 或 Nuitka 打包脚本，并包含资源文件，并使用 UPX 压缩."""
     base_dir = os.path.dirname(os.path.abspath(script_name))
     add_data = prepare_data_files(data_dir)
 
@@ -204,7 +204,7 @@ def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False,
 
 
 def run_packaged_game(script_name, packer='pyinstaller', args_to_pass=None, onefile=False):
-    """运行打包后的游戏."""
+    """运行打包后的程序."""
     base_dir = os.path.dirname(os.path.abspath(script_name))
     output_dir = os.path.join(base_dir, "output")
     script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
@@ -234,9 +234,9 @@ def run_packaged_game(script_name, packer='pyinstaller', args_to_pass=None, onef
         try:
             subprocess.run(command, check=True)
         except subprocess.CalledProcessError as e:
-            print(f"运行打包后的游戏失败: {e}")
+            print(f"运行打包后的程序失败: {e}")
     else:
-        print(f"找不到打包后的游戏: {exe_path}，请先打包游戏。")
+        print(f"找不到打包后的程序: {exe_path}，请先打包程序。")
 
 
 def validate_arguments(args):
@@ -254,7 +254,7 @@ def validate_arguments(args):
 def parse_arguments():
     """解析命令行参数，并验证参数的有效性."""
     parser = argparse.ArgumentParser(
-        description="使用 PyInstaller 或 Nuitka 打包 Python 游戏。\n\n"
+        description="使用 PyInstaller 或 Nuitka 打包 Python 脚本。\n\n"
                     "示例:\n"
                     "  python your_script.py main.py --packer nuitka --onefile --data_dir data\n\n"
                     "注意:\n"
@@ -262,7 +262,7 @@ def parse_arguments():
                     "  - UPX 是一个可选的压缩工具，可以减小可执行文件的大小，需要单独下载并指定其目录。\n",
         formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument("script_name", help="游戏脚本的文件名")
+    parser.add_argument("script_name", help="脚本的文件名")
     parser.add_argument(
         "--packer",
         choices=['pyinstaller', 'nuitka'],
