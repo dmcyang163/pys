@@ -1,7 +1,107 @@
+import argparse
 import os
 import subprocess
-import argparse
 import shutil
+
+def create_output_dir(base_dir, packer):
+    """创建输出目录"""
+    output_dir = os.path.join(base_dir, "output")
+    packer_output_dir = os.path.join(output_dir, packer)
+    os.makedirs(packer_output_dir, exist_ok=True)
+    return packer_output_dir
+
+def get_nuitka_executable(base_dir):
+    """获取 Nuitka 可执行文件路径"""
+    venv_path = os.path.join(os.path.dirname(base_dir), ".venv", "Scripts", "nuitka.cmd")
+    if os.path.exists(venv_path):
+        print(f"使用虚拟环境中的 Nuitka: {venv_path}")
+        return venv_path
+    else:
+        nuitka_executable = "nuitka"
+        if shutil.which(nuitka_executable) is None:
+            print("系统 PATH 中也未找到 Nuitka，请确保已安装并添加到 PATH。")
+            return None
+        return nuitka_executable
+
+def build_pyinstaller_command(script_name, output_dir, add_data, onefile, upx_dir):
+    """构建 PyInstaller 打包命令"""
+    command = [
+        "pyinstaller",
+        "--noconsole",
+        f"--distpath={output_dir}",
+        f"--workpath={os.path.join(output_dir, 'build')}",
+        "--clean"
+    ]
+
+    if onefile:
+        command.append("--onefile")
+
+    for data in add_data:
+        command.append(f"--add-data={data}")
+
+    if upx_dir:
+        command.append(f"--upx-dir={upx_dir}")
+
+    command.append(script_name)
+    return command
+
+def build_nuitka_command(script_name, output_dir, add_data, onefile):
+    """构建 Nuitka 打包命令"""
+    command = [
+        "--standalone",
+        "--windows-console-mode=disable",  # 使用新选项
+        "--follow-imports",
+        f"--output-filename=tetris.exe",
+        f"--output-dir={output_dir}",
+    ]
+
+    if onefile:
+        command.append("--onefile")
+
+    for data in add_data:
+        source, dest = data.split(os.pathsep)
+        command.append(f"--include-data-dir={source}={dest}")
+
+    command.append(script_name)
+    return command
+
+def test_upx_compression(upx_dir, exe_path):
+    """测试文件是否可以被 UPX 压缩"""
+    test_command = [os.path.join(upx_dir, "upx"), "-t", exe_path]
+    try:
+        subprocess.run(test_command, check=True)
+        print(f"文件可以被 UPX 压缩: {exe_path}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"文件无法被 UPX 压缩: {e}")
+        return False
+
+def is_already_compressed(upx_dir, exe_path):
+    """检查文件是否已经被 UPX 压缩"""
+    info_command = [os.path.join(upx_dir, "upx"), "-l", exe_path]
+    try:
+        result = subprocess.run(info_command, capture_output=True, text=True, check=True)
+        return "compressed" in result.stdout
+    except subprocess.CalledProcessError:
+        return False
+
+def compress_with_upx(upx_dir, exe_path):
+    """使用 UPX 压缩可执行文件"""
+    if is_already_compressed(upx_dir, exe_path):
+        print(f"文件已经被 UPX 压缩: {exe_path}")
+        return  # 如果文件已经被压缩，直接返回
+
+    if not test_upx_compression(upx_dir, exe_path):
+        return  # 如果文件无法被压缩，直接返回
+
+    upx_command = [os.path.join(upx_dir, "upx"), "--best", exe_path]
+    try:
+        subprocess.run(upx_command, check=True)
+        print(f"UPX 压缩成功: {exe_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"UPX 压缩失败: {e}")
+    except FileNotFoundError:
+        print(f"未找到 UPX 工具，请确保 UPX 已安装并路径正确: {upx_dir}")
 
 def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False):
     """
@@ -14,77 +114,35 @@ def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False)
         onefile (bool): 是否使用 Onefile 模式，默认为 False。
     """
     base_dir = os.path.dirname(os.path.abspath(script_name))  # 脚本所在的目录
-    output_dir = os.path.join(base_dir, "output") # 创建一个名为 output 的目录用于存放打包结果
-    os.makedirs(output_dir, exist_ok=True) # 确保 output 目录存在
-
-    add_data = []
-    add_data.append(f"sounds{os.pathsep}sounds")
-    add_data.append(f"fonts{os.pathsep}fonts")
-    add_data.append(f"textures{os.pathsep}textures")
+    add_data = [
+        f"sounds{os.pathsep}sounds",
+        f"fonts{os.pathsep}fonts",
+        f"textures{os.pathsep}textures"
+    ]
 
     if packer == 'pyinstaller':
-        pyinstaller_output_dir = os.path.join(output_dir, "pyinstaller") # pyinstaller 的输出目录
-        os.makedirs(pyinstaller_output_dir, exist_ok=True) # 确保目录存在
-
-        command = [
-            "pyinstaller",
-            "--noconsole",
-            f"--distpath={pyinstaller_output_dir}", # 指定输出目录
-            f"--workpath={os.path.join(pyinstaller_output_dir, 'build')}", # 指定临时文件目录
-            "--clean" # 添加 --clean 选项
-        ]
-
-        if onefile:
-            command.append("--onefile")
-
-        for data in add_data:
-            command.append(f"--add-data={data}")
-
-        command.append(script_name)
-
-        if upx_dir:
-            #command.append(f"--upx-dir={upx_dir}") # 暂时禁用 UPX 压缩
-            pass
+        output_dir = create_output_dir(base_dir, "pyinstaller")
+        command = build_pyinstaller_command(script_name, output_dir, add_data, onefile, upx_dir)
         try:
             subprocess.run(command, check=True)
         except subprocess.CalledProcessError as e:
             print(f"PyInstaller 打包失败: {e}")
 
     elif packer == 'nuitka':
-        nuitka_output_dir = os.path.join(output_dir, "nuitka") # nuitka 的输出目录
-        os.makedirs(nuitka_output_dir, exist_ok=True) # 确保目录存在
+        output_dir = create_output_dir(base_dir, "nuitka")
+        nuitka_executable = get_nuitka_executable(base_dir)
+        if not nuitka_executable:
+            return  # 如果找不到 Nuitka，退出函数
 
-        # 查找虚拟环境中的 nuitka.cmd
-        nuitka_executable = None
-        venv_path = os.path.join(os.path.dirname(base_dir), ".venv", "Scripts", "nuitka.cmd")
-        if os.path.exists(venv_path):
-            nuitka_executable = venv_path
-            print(f"使用虚拟环境中的 Nuitka: {nuitka_executable}")
-        else:
-            nuitka_executable = "nuitka"  # 假设在 PATH 中
-            if shutil.which(nuitka_executable) is None:
-                print("系统 PATH 中也未找到 Nuitka，请确保已安装并添加到 PATH。请检查 Nuitka 是否已安装并添加到系统环境变量 PATH 中。")
-                return  # 退出函数，因为找不到 Nuitka
-
-        command = [
-            nuitka_executable,
-            "--standalone",
-            "--disable-console",
-            "--follow-imports",
-            f"--output-filename=tetris.exe", # 指定输出文件名
-            f"--output-dir={nuitka_output_dir}", # 指定输出目录
-        ]
-
-        if onefile:
-            command.append("--onefile")
-
-        for data in add_data:
-            source, dest = data.split(os.pathsep)
-            command.append(f"--include-data-dir={source}={dest}")
-
-        command.append(script_name)
+        command = [nuitka_executable] + build_nuitka_command(script_name, output_dir, add_data, onefile)
         try:
             subprocess.run(command, check=True, cwd=base_dir)
+
+            # Nuitka 打包完成后，调用 UPX 压缩
+            if upx_dir:
+                exe_name = "tetris.exe"
+                exe_path = os.path.join(output_dir, exe_name)
+                compress_with_upx(upx_dir, exe_path)
 
         except subprocess.CalledProcessError as e:
             print(f"Nuitka 打包失败: {e}")
@@ -137,18 +195,51 @@ def run_packaged_game(script_name, packer='pyinstaller', args_to_pass=None, onef
     else:
         print(f"找不到打包后的游戏: {exe_path}，请先打包游戏。")
 
-if __name__ == "__main__":
+def parse_arguments():
+    """
+    解析命令行参数。
+
+    返回:
+        argparse.Namespace: 包含解析后的参数的对象。
+    """
     parser = argparse.ArgumentParser(description="使用 PyInstaller 或 Nuitka 打包 Python 游戏。")
     parser.add_argument("script_name", help="游戏脚本的文件名")
-    parser.add_argument("--packer", choices=['pyinstaller', 'nuitka'], default='pyinstaller', help="选择打包工具 (pyinstaller 或 nuitka)")
-    parser.add_argument("--upx_dir", help="UPX 压缩工具的目录 (可选)")
-    parser.add_argument("--onefile", action="store_true", help="使用 Onefile 模式 (可选)")
-    parser.add_argument("--args_to_pass", nargs='*', help="传递给可执行文件的参数 (可选)")
-    #parser.add_argument("--nuitka_python_binary", help="Nuitka 特定的 Python 解释器可执行文件路径 (可选)") # 不再使用
-    args = parser.parse_args()
+    parser.add_argument(
+        "--packer",
+        choices=['pyinstaller', 'nuitka'],
+        default='pyinstaller',
+        help="选择打包工具 (pyinstaller 或 nuitka)"
+    )
+    parser.add_argument(
+        "--upx_dir",
+        help="UPX 压缩工具的目录 (可选)"
+    )
+    parser.add_argument(
+        "--onefile",
+        action="store_true",
+        help="使用 Onefile 模式 (可选)"
+    )
+    parser.add_argument(
+        "--args_to_pass",
+        nargs='*',
+        help="传递给可执行文件的参数 (可选)"
+    )
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    # 解析命令行参数
+    args = parse_arguments()
+
+    # 提取参数值并传递给函数
+    script_name = args.script_name
+    packer = args.packer
+    upx_dir = args.upx_dir
+    onefile = args.onefile
+    args_to_pass = args.args_to_pass
 
     # 先打包游戏
-    package_game(args.script_name, args.packer, args.upx_dir, onefile=args.onefile) # 不再传递 nuitka_python_binary
+    package_game(script_name, packer, upx_dir, onefile=onefile)
 
     # 再运行打包后的游戏
-    run_packaged_game(args.script_name, args.packer, args.args_to_pass, onefile=args.onefile)
+    run_packaged_game(script_name, packer, args_to_pass, onefile=onefile)
+
