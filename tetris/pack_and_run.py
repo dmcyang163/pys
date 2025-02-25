@@ -134,6 +134,7 @@ def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False)
         if not nuitka_executable:
             return  # 如果找不到 Nuitka，退出函数
 
+        # 尝试使用 Onefile 模式打包
         command = [nuitka_executable] + build_nuitka_command(script_name, output_dir, add_data, onefile)
         try:
             subprocess.run(command, check=True, cwd=base_dir)
@@ -145,7 +146,23 @@ def package_game(script_name, packer='pyinstaller', upx_dir=None, onefile=False)
                 compress_with_upx(upx_dir, exe_path)
 
         except subprocess.CalledProcessError as e:
-            print(f"Nuitka 打包失败: {e}")
+            print(f"Nuitka Onefile 打包失败: {e}")
+
+            # 如果 Onefile 模式失败，则尝试不用 Onefile 模式打包
+            print("尝试不用 Onefile 模式重新打包...")
+            command = [nuitka_executable] + build_nuitka_command(script_name, output_dir, add_data, False) # onefile=False
+            try:
+                subprocess.run(command, check=True, cwd=base_dir)
+
+                # Nuitka 打包完成后，调用 UPX 压缩
+                if upx_dir:
+                    exe_name = "tetris.exe"
+                    exe_path = os.path.join(output_dir, exe_name)
+                    compress_with_upx(upx_dir, exe_path)
+
+            except subprocess.CalledProcessError as e:
+                print(f"Nuitka 不用 Onefile 模式打包也失败: {e}")
+
     else:
         print("无效的打包工具，请选择 'pyinstaller' 或 'nuitka'。")
 
@@ -174,9 +191,13 @@ def run_packaged_game(script_name, packer='pyinstaller', args_to_pass=None, onef
     elif packer == 'nuitka':
         nuitka_output_dir = os.path.join(output_dir, "nuitka")
         exe_name = "tetris.exe" # Nuitka output name is fixed
+        # 优先查找 onefile 模式的 exe，如果不存在，则查找非 onefile 模式的 exe
         if onefile:
             exe_path = os.path.join(nuitka_output_dir, exe_name)
-        else:
+            if not os.path.exists(exe_path):
+                print("Onefile 模式打包的可执行文件不存在，尝试查找非 Onefile 模式的可执行文件...")
+                onefile = False # 切换到非 onefile 模式
+        if not onefile:
             script_name_without_ext = os.path.splitext(os.path.basename(script_name))[0]
             dist_dir = os.path.join(nuitka_output_dir, f"{script_name_without_ext}.dist") # Nuitka 默认在 <script_name>.dist 目录生成可执行文件
             exe_path = os.path.join(dist_dir, exe_name)
@@ -242,4 +263,3 @@ if __name__ == "__main__":
 
     # 再运行打包后的游戏
     run_packaged_game(script_name, packer, args_to_pass, onefile=onefile)
-
