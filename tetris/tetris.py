@@ -44,6 +44,10 @@ class TetrisGame:
         self._init_joystick()
         self.input_handler = InputHandler(self)
 
+        # 初始化音效
+        self.explosion_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("sounds", "explosion.wav")))  # 加载爆炸音效
+        self.tetris_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("sounds", "tetris_music.mp3")))  # 加载爆炸音效
+        self.tetris_sound.play(loops=-1)  # 循环播放背景音乐
     def _init_joystick(self):
         """
         初始化手柄。
@@ -128,7 +132,9 @@ class TetrisGame:
             self.is_clearing = True
             self.clearing_animation_progress = 0.0
             self.score_manager.add_score(len(self.cleared_lines))
-            self.explosion_sound.play()
+            # 播放爆炸音效
+            if hasattr(self, 'explosion_sound'):  # 确保 explosion_sound 存在
+                self.explosion_sound.play()
 
             # 触发粒子效果
             for line in self.cleared_lines:
