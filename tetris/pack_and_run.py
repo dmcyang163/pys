@@ -70,7 +70,8 @@ class Packer:
     def _process_item(self, data_dir, item):
         """处理单个文件项。"""
         source_path = os.path.join(data_dir, item)
-        dest_path = item
+        # 修改 dest_path，保持相对目录结构
+        dest_path = os.path.join(os.path.basename(data_dir), item)  # 关键修改
         return f"{source_path}{os.pathsep}{dest_path}"
 
     def package(self):

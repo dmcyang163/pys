@@ -45,8 +45,8 @@ class TetrisGame:
         self.input_handler = InputHandler(self)
 
         # 初始化音效
-        self.explosion_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("sounds", "explosion.wav")))  # 加载爆炸音效
-        self.tetris_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("sounds", "tetris_music.mp3")))  # 加载爆炸音效
+        self.explosion_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("assets/sounds", "explosion.wav")))  # 加载爆炸音效
+        self.tetris_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("assets/sounds", "tetris_music.mp3")))  # 加载爆炸音效
         self.tetris_sound.play(loops=-1)  # 循环播放背景音乐
     def _init_joystick(self):
         """

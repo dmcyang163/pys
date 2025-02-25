@@ -17,7 +17,7 @@ class GameRenderer:
         pygame.display.set_caption("俄罗斯方块 - 分数显示版")
         
         # 加载字体，启用抗锯齿
-        self.font = pygame.font.Font(ttools.get_resource_path(os.path.join("fonts", "MI_LanTing_Regular.ttf")), int(config.SCREEN_WIDTH * 0.08))
+        self.font = pygame.font.Font(ttools.get_resource_path(os.path.join("assets", "fonts", "MI_LanTing_Regular.ttf")), int(config.SCREEN_WIDTH * 0.08))
         
         self.block_surface = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), pygame.SRCALPHA)
         self.grid_line_color = config.GRID_LINE_COLOR
@@ -27,7 +27,7 @@ class GameRenderer:
         self.high_score_surface = None
 
         # 加载玻璃纹理图片
-        texture_path = os.path.join("textures", "block.png")
+        texture_path = os.path.join("assets/textures", "block.png")
         if os.path.exists(texture_path):
             self.glass_texture = pygame.image.load(texture_path).convert()
             self.glass_texture = pygame.transform.scale(self.glass_texture, (self.config.BLOCK_SIZE, self.config.BLOCK_SIZE))

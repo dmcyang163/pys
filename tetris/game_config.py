@@ -4,20 +4,20 @@ import colorsys
 
 @dataclass
 class GameConfig:
-    SCREEN_WIDTH: int = 300
-    SCREEN_HEIGHT: int = 600
-    BLOCK_SIZE: int = 30
+    SCREEN_WIDTH: int = 400
+    SCREEN_HEIGHT: int = 800
+    BLOCK_SIZE: int = 40
     FALL_SPEED: float = 1.5
     FAST_FALL_SPEED: float = 30.0
     COLORS: List[Tuple[int, int, int]] = None
     SHAPES: List[List[List[int]]] = None
-    PREVIEW_X: int = 220
+    PREVIEW_X: int = 260
     PREVIEW_Y: int = 50
     PREVIEW_SIZE: int = 4
     NUM_COLORS: int = 12
     GRID_LINE_COLOR: Tuple[int, int, int] = (40, 40, 40)
     BACKGROUND_COLOR: Tuple[int, int, int] = (30, 30, 30)
-    EXPLOSION_PARTICLE_COUNT: int = 30
+    EXPLOSION_PARTICLE_COUNT: int = 40
     ANIMATION_DURATION: int = 300
 
     def __post_init__(self):
