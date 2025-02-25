@@ -22,7 +22,7 @@ def get_virtual_env_path():
     if venv_path and os.path.isdir(venv_path):  # 确保路径存在
         return venv_path
 
-    # 2. 如果 VIRTUAL_ENV 不存在或无效，则使用 sys.prefix/sys.base_prefix
+    # 2. 如果 VIRTUAL_ENV 不存在或无效，则使用 sys.prefix != sys.base_prefix
     if getattr(sys, 'base_prefix', sys.prefix) != sys.prefix:
         return sys.prefix
 
@@ -268,31 +268,48 @@ def parse_arguments():
     返回:
         argparse.Namespace: 包含解析后的参数的对象。
     """
-    parser = argparse.ArgumentParser(description="使用 PyInstaller 或 Nuitka 打包 Python 游戏。")
+    parser = argparse.ArgumentParser(
+        description="使用 PyInstaller 或 Nuitka 打包 Python 游戏。\n\n"
+                    "示例:\n"
+                    "  python your_script.py main.py --packer nuitka --onefile --data_dir data\n\n"
+                    "注意:\n"
+                    "  - 使用 Nuitka 需要先安装 Nuitka: pip install nuitka\n"
+                    "  - UPX 是一个可选的压缩工具，可以减小可执行文件的大小，需要单独下载并指定其目录。\n",
+        formatter_class=argparse.RawTextHelpFormatter  # 保留原始格式
+    )
     parser.add_argument("script_name", help="游戏脚本的文件名")
     parser.add_argument(
         "--packer",
         choices=['pyinstaller', 'nuitka'],
         default='pyinstaller',
-        help="选择打包工具 (pyinstaller 或 nuitka)"
+        help="选择打包工具 (pyinstaller 或 nuitka)\n"
+             "  - pyinstaller: 使用 PyInstaller 打包 (默认)\n"
+             "  - nuitka: 使用 Nuitka 打包 (需要安装 Nuitka)"
     )
     parser.add_argument(
         "--upx_dir",
-        help="UPX 压缩工具的目录 (可选)"
+        help="UPX 压缩工具的目录 (可选)\n"
+             "  - 用于压缩 PyInstaller 打包后的可执行文件，减小文件大小\n"
+             "  - 需要单独下载 UPX 并指定其目录"
     )
     parser.add_argument(
         "--onefile",
         action="store_true",
-        help="使用 Onefile 模式 (可选)"
+        help="使用 Onefile 模式 (可选)\n"
+             "  - 将所有依赖打包成一个单独的可执行文件\n"
+             "  - 默认为 False (不使用 Onefile 模式)"
     )
     parser.add_argument(
         "--args_to_pass",
         nargs='*',
-        help="传递给可执行文件的参数 (可选)"
+        help="传递给可执行文件的参数 (可选)\n"
+             "  - 例如: --args_to_pass --width 800 --height 600"
     )
     parser.add_argument(
         "--data_dir",
-        help="资源文件所在的目录 (可选)"
+        help="资源文件所在的目录 (可选)\n"
+             "  - 指定包含声音、图像、字体等资源的目录\n"
+             "  - 脚本会自动将该目录下的所有文件和子目录打包到可执行文件中"
     )
     return parser.parse_args()
 
