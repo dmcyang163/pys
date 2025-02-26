@@ -9,6 +9,7 @@ from particle import Particle
 import ttools
 from particle import ParticleSystem
 
+
 class GameRenderer:
     """渲染游戏元素到屏幕上。"""
 
@@ -220,7 +221,7 @@ class GameRenderer:
         self.screen.blit(self.game_over_surface, (0, 0))
 
     def draw_score_popup(self, score_manager: ScoreManager) -> None:
-        """绘制消除行得分。"""
+        """绘制消除行得分，带有向上漂浮和淡出效果。"""
         if score_manager.score_popup_text is None:
             return
 
@@ -231,13 +232,16 @@ class GameRenderer:
 
         # 计算透明度
         alpha = max(0, 255 - (elapsed_time / score_manager.score_popup_duration) * 255)
-        score_manager.score_popup_alpha = alpha
+
+        # 计算向上漂浮的偏移量
+        float_offset = - (elapsed_time / score_manager.score_popup_duration) * 100  # 向上移动 100 像素
 
         # 创建带透明度的文本 Surface
         text_surface = pygame.Surface(score_manager.score_popup_text.get_size(), pygame.SRCALPHA)
         text_surface.blit(score_manager.score_popup_text, (0, 0))
         text_surface.set_alpha(int(alpha))
 
-        # 绘制文本
+        # 绘制文本，应用偏移量
         text_rect = text_surface.get_rect(center=score_manager.score_popup_position)
+        text_rect.centery += float_offset  # 应用向上漂浮的偏移量
         self.screen.blit(text_surface, text_rect)
