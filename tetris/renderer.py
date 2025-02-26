@@ -1,3 +1,4 @@
+# game_renderer.py
 import pygame
 import os
 from typing import Tuple, List
@@ -9,22 +10,22 @@ from particle import Particle
 import ttools
 from particle import ParticleSystem
 
-
 class GameRenderer:
     def __init__(self, config: GameConfig):
         self.config = config
         self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
         pygame.display.set_caption("俄罗斯方块 - 分数显示版")
-        
+
         # 加载字体，启用抗锯齿
         self.font = pygame.font.Font(ttools.get_resource_path(os.path.join("assets", "fonts", "MI_LanTing_Regular.ttf")), int(config.SCREEN_WIDTH * 0.08))
-        
+
         self.block_surface = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), pygame.SRCALPHA)
         self.grid_line_color = config.GRID_LINE_COLOR
         self.background_color = config.BACKGROUND_COLOR
         self.grid_surface = self._create_grid_surface()
         self.score_surface = None
         self.high_score_surface = None
+        self.level_surface = None  # 新增等级 Surface
 
         # 加载玻璃纹理图片
         texture_path = os.path.join("assets/textures", "block.png")
@@ -110,10 +111,17 @@ class GameRenderer:
             self.high_score_surface = self.font.render(f"最高分: {formatted_high_score}", True, (255, 255, 255))  # 启用抗锯齿
             score_manager.high_score_changed = False
 
+        if score_manager.level_changed:  # 新增：如果等级改变，则更新等级 Surface
+            formatted_level = f"{score_manager.level:,}"
+            self.level_surface = self.font.render(f"等级: {formatted_level}", True, (255, 255, 255))  # 启用抗锯齿
+            score_manager.level_changed = False
+
         if self.score_surface:
             self.screen.blit(self.score_surface, (10, 10))
         if self.high_score_surface:
             self.screen.blit(self.high_score_surface, (10, 10 + int(self.config.SCREEN_WIDTH * 0.08)))
+        if self.level_surface:  # 新增：绘制等级
+            self.screen.blit(self.level_surface, (10, 10 + 2 * int(self.config.SCREEN_WIDTH * 0.08)))  # 调整位置
 
     def draw_next_piece(self, tetromino: Tetromino) -> None:
         for y, row in enumerate(tetromino.shape):
@@ -157,11 +165,15 @@ class GameRenderer:
         # 动态更新分数
         score_text = self.font.render(f"分数: {score_manager.score:,}", True, (255, 255, 255))  # 启用抗锯齿
         high_score_text = self.font.render(f"最高分: {score_manager.high_score:,}", True, (255, 255, 255))  # 启用抗锯齿
+        level_text = self.font.render(f"等级: {score_manager.level:,}", True, (255, 255, 255))  # 启用抗锯齿
 
         # 将动态文字绘制到 Surface 上
         self.game_over_surface.blit(score_text, (self.config.SCREEN_WIDTH // 2 - score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2))
         self.game_over_surface.blit(high_score_text, (self.config.SCREEN_WIDTH // 2 - high_score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 50))
+        self.game_over_surface.blit(level_text, (self.config.SCREEN_WIDTH // 2 - level_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 100))  # 新增：绘制等级
 
         # 最后绘制游戏结束界面（遮罩和文字）
         self.screen.blit(self.game_over_surface, (0, 0))
         print("Game Over Surface drawn at (0, 0)")
+
+        

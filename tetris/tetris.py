@@ -1,3 +1,4 @@
+# tetris_game.py
 import sys
 import pygame
 import os
@@ -9,9 +10,7 @@ from particle import ParticlePool, ParticleSystem
 from renderer import GameRenderer
 from input_handler import InputHandler
 from game_state import GameState
-
 import ttools
-
 
 class TetrisGame:
     def __init__(self):
@@ -23,8 +22,8 @@ class TetrisGame:
             pygame.display.init()
         self.config = GameConfig()
         self.game_board = Board(self.config)
-        self.renderer = GameRenderer(self.config)
-        self.score_manager = ScoreManager()
+        self.score_manager = ScoreManager()  # 初始化 ScoreManager
+        self.renderer = GameRenderer(self.config)  # 传递 ScoreManager 实例
         self.current_tetromino = self._create_new_piece()
         self.next_tetromino = self._create_new_piece()
         self.last_fall_time = pygame.time.get_ticks()
@@ -44,10 +43,15 @@ class TetrisGame:
         self._init_joystick()
         self.input_handler = InputHandler(self)
 
+        # 等级相关属性
+        self.level_up_score = 1000  # 升级所需的分数
+        self.fall_speed_increase = 0.1  # 每次升级增加的下落速度百分比
+
         # 初始化音效
         self.explosion_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("assets/sounds", "explosion.wav")))  # 加载爆炸音效
         self.tetris_sound = pygame.mixer.Sound(ttools.get_resource_path(os.path.join("assets/sounds", "tetris_music.mp3")))  # 加载爆炸音效
         self.tetris_sound.play(loops=-1)  # 循环播放背景音乐
+
     def _init_joystick(self):
         """
         初始化手柄。
@@ -87,6 +91,7 @@ class TetrisGame:
             self.game_board.remove_lines(self.cleared_lines)
             self.is_clearing = False
             if not self.new_piece():
+                self.game_state = GameState.GAME_OVER
                 self.running = False  # Game over
 
     def _handle_piece_movement(self, current_time: int) -> None:
@@ -115,7 +120,10 @@ class TetrisGame:
         """
         处理方块的下落。
         """
-        current_speed = self.config.FAST_FALL_SPEED if self.down_key_pressed else self.config.FALL_SPEED
+        # 根据等级调整下落速度
+        base_speed = self.config.FAST_FALL_SPEED if self.down_key_pressed else self.config.FALL_SPEED
+        current_speed = base_speed * (1 + (self.score_manager.level - 1) * self.fall_speed_increase)
+
         if current_time - self.last_fall_time > 1000 / current_speed:
             if not self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x, self.current_tetromino.y + 1):
                 self.current_tetromino.y += 1
@@ -132,6 +140,12 @@ class TetrisGame:
             self.is_clearing = True
             self.clearing_animation_progress = 0.0
             self.score_manager.add_score(len(self.cleared_lines))
+
+            # 检查是否升级
+            if self.score_manager.score >= self.level_up_score * self.score_manager.level:
+                self.score_manager.level_up()  # 调用 ScoreManager 的 level_up 方法
+                print(f"升级！当前等级：{self.score_manager.level}")
+
             # 播放爆炸音效
             if hasattr(self, 'explosion_sound'):  # 确保 explosion_sound 存在
                 self.explosion_sound.play()
@@ -185,9 +199,9 @@ class TetrisGame:
                 # 渲染游戏结束界面
                 print("Game Over state detected, rendering game over screen...")
                 self.renderer.render_game_over(self.game_board, self.current_tetromino, self.next_tetromino, self.score_manager, self.particle_system)
-                
+
                 pygame.event.clear()
-                
+
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.running = False
@@ -196,12 +210,11 @@ class TetrisGame:
                         key = pygame.key.name(event.key).lower()
                         if key in ['r', 'ｒ']:
                             self.__init__()
-                            
+
                             self.game_state = GameState.PLAYING
                             self.new_piece()
                         elif key in ['q', 'ｑ']:
                             self.running = False
-                                
 
             # 统一调用 pygame.display.flip()
             pygame.display.flip()
