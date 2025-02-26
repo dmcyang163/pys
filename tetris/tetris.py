@@ -198,20 +198,10 @@ class TetrisGame:
     def _handle_game_over(self):
         """处理游戏结束状态。"""
         print("Game Over state detected, rendering game over screen...")
-        self.renderer.render_game_over(self.game_board, self.current_tetromino, self.next_tetromino,
-                                        self.score_manager, self.particle_system)
+        self.renderer.render_game_over(self.game_board, self.current_tetromino, self.next_tetromino, self.score_manager, self.particle_system)
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-            if event.type == pygame.KEYDOWN:
-                key = pygame.key.name(event.key).lower()
-                if key in ['r', 'ｒ']:
-                    self.__init__()
-                    self.game_state = GameState.PLAYING
-                    self.new_piece()
-                elif key in ['q', 'ｑ']:
-                    self.running = False
+        # 处理游戏结束时的输入事件
+        self.input_handler.handle_input()
 
     def game_loop(self) -> None:
         """游戏主循环。"""

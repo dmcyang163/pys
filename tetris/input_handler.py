@@ -125,6 +125,9 @@ class InputHandler:
             self._handle_game_over_text(event.text)
 
     def _handle_game_over_key(self, key) -> None:
+        """
+        处理游戏结束时的键盘输入。
+        """
         key_name = pygame.key.name(key).lower()
         if key_name in ['r', 'ｒ']:
             self.game.__init__()
@@ -134,6 +137,9 @@ class InputHandler:
             self.game.running = False
 
     def _handle_game_over_text(self, text) -> None:
+        """
+        处理游戏结束时的文本输入。
+        """
         text = text.lower()
         if text in ['r', 'ｒ']:
             self.game.__init__()
