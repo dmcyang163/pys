@@ -22,7 +22,7 @@ class GameRenderer:
         self.block_surface = pygame.Surface((self.config.BLOCK_SIZE, self.config.BLOCK_SIZE), pygame.SRCALPHA)
         self.grid_line_color = config.GRID_LINE_COLOR
         self.background_color = config.BACKGROUND_COLOR
-        self.grid_surface = self._create_grid_surface()
+        self.grid_surface = self._init_grid_surface()
         self.score_surface = None
         self.high_score_surface = None
         self.level_surface = None  # 新增等级 Surface
@@ -89,7 +89,7 @@ class GameRenderer:
                 if cell:
                     self.draw_block(tetromino.x + x, tetromino.y + y, tetromino.color)
 
-    def _create_grid_surface(self) -> pygame.Surface:
+    def _init_grid_surface(self) -> pygame.Surface:
         grid_surface = pygame.Surface((self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT), pygame.SRCALPHA)
         for x in range(0, self.config.SCREEN_WIDTH, self.config.BLOCK_SIZE):
             pygame.draw.line(grid_surface, self.grid_line_color, (x, 0), (x, self.config.SCREEN_HEIGHT))
@@ -157,7 +157,7 @@ class GameRenderer:
         self.render_game(game_board, current_tetromino, next_tetromino, score_manager, particle_system)
 
         # 清空 game_over_surface，避免文字叠加
-        self.game_over_surface.fill((0, 0, 0, 128))  # 重新填充半透明黑色遮罩
+        self.game_over_surface.fill((0, 0, 0, 160))  # 重新填充半透明黑色遮罩
 
         # 绘制静态文字
         self._draw_static_text()
@@ -167,13 +167,12 @@ class GameRenderer:
         high_score_text = self.font.render(f"最高分: {score_manager.high_score:,}", True, (255, 255, 255))  # 启用抗锯齿
         level_text = self.font.render(f"等级: {score_manager.level:,}", True, (255, 255, 255))  # 启用抗锯齿
 
-        # 将动态文字绘制到 Surface 上
-        self.game_over_surface.blit(score_text, (self.config.SCREEN_WIDTH // 2 - score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2))
-        self.game_over_surface.blit(high_score_text, (self.config.SCREEN_WIDTH // 2 - high_score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 50))
-        self.game_over_surface.blit(level_text, (self.config.SCREEN_WIDTH // 2 - level_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 100))  # 新增：绘制等级
+        # 将动态文字绘制到 Surface 上 (向上移动)
+        offset = -50  # 向上移动的偏移量
+        self.game_over_surface.blit(score_text, (self.config.SCREEN_WIDTH // 2 - score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + offset))
+        self.game_over_surface.blit(high_score_text, (self.config.SCREEN_WIDTH // 2 - high_score_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 50 + offset))
+        self.game_over_surface.blit(level_text, (self.config.SCREEN_WIDTH // 2 - level_text.get_width() // 2, self.config.SCREEN_HEIGHT // 2 + 100 + offset))  # 新增：绘制等级
 
         # 最后绘制游戏结束界面（遮罩和文字）
         self.screen.blit(self.game_over_surface, (0, 0))
-        print("Game Over Surface drawn at (0, 0)")
 
-        
