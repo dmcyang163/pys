@@ -28,10 +28,12 @@ class TetrisGame:
 
         self.config = GameConfig()
         self.game_board = Board(self.config)
-        self.score_manager = ScoreManager()
+        self.score_manager = ScoreManager(self.config)
         self.renderer = GameRenderer(self.config)
+
         self.current_tetromino = self._create_new_piece()
         self.next_tetromino = self._create_new_piece()
+
         self.last_fall_time = pygame.time.get_ticks()
         self.down_key_pressed = False
         self.left_key_pressed = False
@@ -149,7 +151,10 @@ class TetrisGame:
         if self.cleared_lines:
             self.is_clearing = True
             self.clearing_animation_progress = 0.0
-            self.score_manager.add_score(len(self.cleared_lines))
+            score_increase = self.score_manager.add_score(len(self.cleared_lines))
+
+            # 显示消除行得分
+            self.score_manager.show_score_popup(score_increase)  # 调用 show_score_popup
 
             # 等级提升判断
             if self.score_manager.should_level_up():

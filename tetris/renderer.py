@@ -184,6 +184,9 @@ class GameRenderer:
         self.draw_next_piece(next_tetromino)
         self.draw_score(score_manager)
 
+        # 绘制消除行得分
+        self.draw_score_popup(score_manager)
+
     def render_pause_screen(self, game_board: Board, current_tetromino: Tetromino, next_tetromino: Tetromino, score_manager: ScoreManager, particle_system: ParticleSystem) -> None:
         """渲染暂停界面。"""
         self.render_game(game_board, current_tetromino, next_tetromino, score_manager, particle_system)
@@ -215,3 +218,26 @@ class GameRenderer:
 
         # 绘制游戏结束界面
         self.screen.blit(self.game_over_surface, (0, 0))
+
+    def draw_score_popup(self, score_manager: ScoreManager) -> None:
+        """绘制消除行得分。"""
+        if score_manager.score_popup_text is None:
+            return
+
+        elapsed_time = pygame.time.get_ticks() - score_manager.score_popup_start_time
+        if elapsed_time > score_manager.score_popup_duration:
+            score_manager.score_popup_text = None  # 结束显示
+            return
+
+        # 计算透明度
+        alpha = max(0, 255 - (elapsed_time / score_manager.score_popup_duration) * 255)
+        score_manager.score_popup_alpha = alpha
+
+        # 创建带透明度的文本 Surface
+        text_surface = pygame.Surface(score_manager.score_popup_text.get_size(), pygame.SRCALPHA)
+        text_surface.blit(score_manager.score_popup_text, (0, 0))
+        text_surface.set_alpha(int(alpha))
+
+        # 绘制文本
+        text_rect = text_surface.get_rect(center=score_manager.score_popup_position)
+        self.screen.blit(text_surface, text_rect)
