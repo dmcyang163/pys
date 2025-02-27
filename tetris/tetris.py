@@ -13,6 +13,7 @@ from renderer import GameRenderer
 from input_handler import InputHandler
 from game_state import GameState
 import ttools
+from util.profile_to_file import profile_to_file
 
 class SoundPool:
     """声音池，用于管理多个声音副本。"""
@@ -282,6 +283,7 @@ class TetrisGame:
         # 处理游戏结束时的输入事件
         self.input_handler.handle_input()
 
+    @profile_to_file("profile.txt")
     def game_loop(self) -> None:
         """游戏主循环。"""
         clock = pygame.time.Clock()
@@ -364,6 +366,9 @@ class TetrisGame:
 
         return False  # 无法通过平移解决碰撞
 
+
 if __name__ == "__main__":
     game = TetrisGame()
+
+    
     game.game_loop()
