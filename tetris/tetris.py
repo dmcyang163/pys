@@ -11,7 +11,6 @@ from input_handler import InputHandler
 from game_state import GameState
 import ttools
 
-
 class TetrisGame:
     """俄罗斯方块游戏主类。"""
 
@@ -46,7 +45,7 @@ class TetrisGame:
         self.explosion_particles = []
         self.game_state = GameState.PLAYING
         self.particle_pool = ParticlePool(max_particles=1000)
-        self.particle_system = ParticleSystem(self.particle_pool)
+        self.particle_system = ParticleSystem(self.particle_pool, self.config)  # 传递 config
         self.joystick = None
         self._init_joystick()
         self.input_handler = InputHandler(self)
@@ -166,14 +165,8 @@ class TetrisGame:
 
             # 生成消除行的粒子效果
             for line in self.cleared_lines:
-                for x in range(len(self.game_board.grid[0])):
-                    if self.game_board.grid[line][x]:
-                        self.particle_system.add_particles(
-                            x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
-                            line * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
-                            self.game_board.grid[line][x],
-                            count=10
-                        )
+                self.particle_system.create_line_clearing_particles(line, self.game_board.grid)
+
         else:
             if not self.new_piece():
                 self.game_state = GameState.GAME_OVER
@@ -236,7 +229,6 @@ class TetrisGame:
             pygame.display.flip()
             self.last_frame_time = current_time
             clock.tick(30)
-
 
 if __name__ == "__main__":
     game = TetrisGame()

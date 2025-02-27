@@ -59,15 +59,27 @@ class ParticlePool:
         self.available.append(particle)
 
 class ParticleSystem:
-    def __init__(self, particle_pool: ParticlePool):
+    def __init__(self, particle_pool: ParticlePool, config):
         self.particles = deque()
         self.particle_pool = particle_pool
+        self.config = config
 
     def add_particles(self, x: int, y: int, color: Tuple[int, int, int], count: int = 30) -> None:
         for _ in range(count):
             particle = self.particle_pool.get_particle(x, y, color)
             if particle:
                 self.particles.append(particle)
+
+    def create_line_clearing_particles(self, line, game_board):
+        """为消除的行创建粒子效果"""
+        for x in range(len(game_board[0])):
+            if game_board[line][x]:
+                self.add_particles(
+                    x * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                    line * self.config.BLOCK_SIZE + self.config.BLOCK_SIZE // 2,
+                    game_board[line][x],
+                    count=10
+                )
 
     def update(self) -> None:
         for particle in list(self.particles):

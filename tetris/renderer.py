@@ -24,8 +24,12 @@ class GameRenderer:
     def __init__(self, config: GameConfig):
         """初始化。"""
         self.config = config
-        self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
+        self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.HWSURFACE | pygame.DOUBLEBUF)
         pygame.display.set_caption("俄罗斯方块")
+
+        info = pygame.display.Info()
+        print(f"硬件加速：{bool(info.hw & pygame.HWSURFACE)}")
+
 
         # 加载字体
         font_size = int(config.SCREEN_WIDTH * self.FONT_SIZE_RATIO)
