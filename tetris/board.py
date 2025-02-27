@@ -1,7 +1,10 @@
 from typing import List
 from game_config import GameConfig
 from tetromino import Tetromino
+from auto_slots import auto_slots
 
+
+@auto_slots
 class Board:
     def __init__(self, config: GameConfig):
         self.config = config
