@@ -1,6 +1,9 @@
 import sys
 import pygame
 import os
+import random
+from typing import List
+
 from game_config import GameConfig
 from tetromino import Tetromino
 from board import Board
@@ -10,6 +13,7 @@ from renderer import GameRenderer
 from input_handler import InputHandler
 from game_state import GameState
 import ttools
+
 
 class TetrisGame:
     """俄罗斯方块游戏主类。"""
@@ -77,6 +81,21 @@ class TetrisGame:
             self.tetris_sound.play(loops=-1)  # 循环播放背景音乐
         else:
             print("背景音乐文件未找到。")
+
+        # 加载旋转音效
+        self.rotate_success_sound = None
+        rotate_success_path = ttools.get_resource_path(os.path.join("assets/sounds", "rotating-switch.wav"))
+        if os.path.exists(rotate_success_path):
+            self.rotate_success_sound = pygame.mixer.Sound(rotate_success_path)
+        else:
+            print("旋转成功音效文件未找到。")
+
+        self.rotate_fail_sound = None
+        rotate_fail_path = ttools.get_resource_path(os.path.join("assets/sounds", "kick_wall.wav"))
+        if os.path.exists(rotate_fail_path):
+            self.rotate_fail_sound = pygame.mixer.Sound(rotate_fail_path)
+        else:
+            print("旋转失败音效文件未找到。")
 
     def _create_new_piece(self) -> Tetromino:
         """创建一个新的俄罗斯方块。"""
@@ -229,6 +248,70 @@ class TetrisGame:
             pygame.display.flip()
             self.last_frame_time = current_time
             clock.tick(30)
+
+    def handle_rotate(self) -> bool:
+        """
+        处理方块的旋转，并播放相应的音效。
+        返回旋转是否成功
+        """
+        original_x = self.current_tetromino.x
+        original_y = self.current_tetromino.y
+        self.current_tetromino.rotate()
+
+        # 检查旋转后的碰撞
+        if self.game_board.check_collision(
+            self.current_tetromino,
+            self.current_tetromino.x,
+            self.current_tetromino.y
+        ):
+            # 如果发生碰撞，尝试平移方块来解决碰撞
+            if not self._try_wall_kick():
+                # 如果平移也无法解决碰撞，则撤销旋转
+                self.current_tetromino.x = original_x
+                self.current_tetromino.y = original_y
+                for _ in range(3):
+                    self.current_tetromino.rotate()
+                # 播放旋转失败音效
+                self._play_rotate_sound(False)
+                return False
+
+        # 播放旋转成功音效
+        self._play_rotate_sound(True)
+        return True
+
+    def _try_wall_kick(self) -> bool:
+        """
+        尝试通过平移方块来解决旋转后的碰撞（墙踢）。
+        """
+        # 定义墙踢的偏移量（可以根据需要调整）
+        wall_kick_offsets = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        for offset_x, offset_y in wall_kick_offsets:
+            new_x = self.current_tetromino.x + offset_x
+            new_y = self.current_tetromino.y + offset_y
+
+            if not self.game_board.check_collision(self.current_tetromino, new_x, new_y):
+                # 如果平移后没有碰撞，则应用平移
+                self.current_tetromino.x = new_x
+                self.current_tetromino.y = new_y
+                return True  # 成功解决碰撞
+
+        return False  # 无法通过平移解决碰撞
+
+    def _play_rotate_sound(self, success: bool) -> None:
+        """
+        播放旋转音效。
+
+        Args:
+            success:  如果旋转成功，则为 True；如果旋转失败，则为 False。
+        """
+        if success:
+            if self.rotate_success_sound:
+                self.rotate_success_sound.play()
+        else:
+            if self.rotate_fail_sound:
+                self.rotate_fail_sound.play()
+
 
 if __name__ == "__main__":
     game = TetrisGame()

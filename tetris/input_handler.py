@@ -1,8 +1,10 @@
 import pygame
+
 from game_state import GameState
 
 
 class InputHandler:
+
     def __init__(self, game):
         self.game = game
 
@@ -44,6 +46,7 @@ class InputHandler:
             elif event.key == pygame.K_DOWN:
                 self.game.down_key_pressed = True
             elif event.key == pygame.K_UP:
+                #  旋转
                 self._handle_rotate()
             elif event.key == pygame.K_p:  # 按下 P 键暂停
                 self.game.toggle_pause()
@@ -96,6 +99,7 @@ class InputHandler:
 
         # 处理旋转
         if button_a:  # A 按钮旋转
+            #  旋转
             self._handle_rotate()
 
         # 处理暂停
@@ -106,14 +110,7 @@ class InputHandler:
         """
         处理方块的旋转。
         """
-        self.game.current_tetromino.rotate()
-        if self.game.game_board.check_collision(
-            self.game.current_tetromino,
-            self.game.current_tetromino.x,
-            self.game.current_tetromino.y
-        ):
-            for _ in range(3):
-                self.game.current_tetromino.rotate()
+        self.game.handle_rotate()
 
     def _handle_game_over_event(self, event) -> None:
         """
