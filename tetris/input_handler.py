@@ -1,10 +1,8 @@
 import pygame
-
 from game_state import GameState
 
 
 class InputHandler:
-
     def __init__(self, game):
         self.game = game
 
@@ -42,9 +40,9 @@ class InputHandler:
             elif event.key == pygame.K_DOWN:
                 self.game.down_key_pressed = True
             elif event.key == pygame.K_UP:
-                #  旋转
+                # 旋转
                 self._handle_rotate()
-            elif event.key == pygame.K_p:  # 按下 P 键暂停
+            elif event.key == pygame.K_p:  # 使用键值检测 P 键
                 self.game.toggle_pause()
 
         if event.type == pygame.KEYUP:
@@ -58,9 +56,9 @@ class InputHandler:
     def _handle_paused_event(self, event) -> None:
         """处理暂停状态下的输入事件。"""
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_p:  # 按下 P 键恢复游戏
+            if event.key == pygame.K_p:  # 使用键值检测 P 键
                 self.game.toggle_pause()
-            elif event.key == pygame.K_q:  # 按下 Q 键退出游戏
+            elif event.key == pygame.K_q:  # 使用键值检测 Q 键
                 self.game.running = False
 
     def _handle_joystick_input(self) -> None:
@@ -91,7 +89,7 @@ class InputHandler:
 
         # 处理旋转
         if button_a:  # A 按钮旋转
-            #  旋转
+            # 旋转
             self._handle_rotate()
 
         # 处理暂停
