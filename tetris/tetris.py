@@ -186,7 +186,7 @@ class TetrisGame:
         if self.game_state == GameState.PLAYING:
             self.game_state = GameState.PAUSED
             print("游戏已暂停")
-        elif self.game_state == GameState.PLAYING:
+        elif self.game_state == GameState.PAUSED:
             self.game_state = GameState.PLAYING
             print("游戏已恢复")
 
