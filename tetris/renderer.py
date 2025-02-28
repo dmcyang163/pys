@@ -8,8 +8,6 @@ from score_manager import ScoreManager
 import util.ttools as ttools
 from particle import ParticleSystem
 
-
-
 def set_wnd_on_top():
     # 获取当前活动窗口的 ID
     window_id = pygame.display.get_wm_info()["window"]
@@ -39,7 +37,6 @@ class GameRenderer:
         info = pygame.display.Info()
         print(f"硬件加速：{bool(info.hw & pygame.HWSURFACE)}")
 
-
         # 加载字体
         font_size = int(config.SCREEN_WIDTH * self.FONT_SIZE_RATIO)
         self.font = pygame.font.Font(ttools.get_resource_path(os.path.join("assets", "fonts", "MI_LanTing_Regular.ttf")), font_size)
@@ -67,6 +64,11 @@ class GameRenderer:
         # 初始化暂停和游戏结束界面
         self.pause_surface = self._init_pause_surface()
         self.game_over_surface = self._init_game_over_surface()
+
+        # 初始化升级动画状态
+        self.level_up_animation_active = False  # 是否正在播放升级动画
+        self.level_up_animation_start_time = 0  # 升级动画开始时间
+        self.level_up_animation_duration = 1000  # 升级动画持续时间（毫秒）
 
     def _init_pause_surface(self) -> pygame.Surface:
         """初始化暂停界面。"""
@@ -201,6 +203,10 @@ class GameRenderer:
         # 绘制消除行得分
         self.draw_score_popup(score_manager)
 
+        # 绘制升级动画
+        if self.level_up_animation_active:
+            self.draw_level_up_animation()
+
     def render_pause_screen(self, game_board: Board, current_tetromino: Tetromino, next_tetromino: Tetromino, score_manager: ScoreManager, particle_system: ParticleSystem) -> None:
         """渲染暂停界面。"""
         self.render_game(game_board, current_tetromino, next_tetromino, score_manager, particle_system)
@@ -257,4 +263,29 @@ class GameRenderer:
         # 绘制文本，应用偏移量
         text_rect = text_surface.get_rect(center=score_manager.score_popup_position)
         text_rect.centery += float_offset  # 应用向上漂浮的偏移量
+        self.screen.blit(text_surface, text_rect)
+
+    def start_level_up_animation(self):
+        """启动升级动画。"""
+        self.level_up_animation_active = True
+        self.level_up_animation_start_time = pygame.time.get_ticks()
+
+    def draw_level_up_animation(self):
+        """绘制升级动画。"""
+        elapsed_time = pygame.time.get_ticks() - self.level_up_animation_start_time
+        if elapsed_time > self.level_up_animation_duration:
+            self.level_up_animation_active = False
+            return
+
+        # 计算动画效果（例如，闪烁、缩放等）
+        alpha = int(255 * abs(pygame.math.sin(elapsed_time / self.level_up_animation_duration * pygame.math.PI * 2)))  # 闪烁效果
+
+        # 创建带透明度的文本 Surface
+        level_up_text = self.font.render("等级提升！", True, self.config.WHITE)
+        text_surface = pygame.Surface(level_up_text.get_size(), pygame.SRCALPHA)
+        text_surface.blit(level_up_text, (0, 0))
+        text_surface.set_alpha(alpha)
+
+        # 绘制文本
+        text_rect = text_surface.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2))
         self.screen.blit(text_surface, text_rect)

@@ -163,6 +163,9 @@ class TetrisGame:
                 self.score_manager.level_up()
                 print(f"升级！当前等级：{self.score_manager.level}")
 
+                # 播放升级音效
+                self.sound_manager.play_sound(SoundType.LEVEL_UP) # 添加这里
+
             # 播放爆炸声音
             self.sound_manager.play_sound(SoundType.EXPLOSION)
 
