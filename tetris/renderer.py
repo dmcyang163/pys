@@ -7,6 +7,7 @@ from board import Board
 from score_manager import ScoreManager
 import util.ttools as ttools
 from particle import ParticleSystem
+import math  # 导入 math 模块
 
 def set_wnd_on_top():
     # 获取当前活动窗口的 ID
@@ -68,7 +69,7 @@ class GameRenderer:
         # 初始化升级动画状态
         self.level_up_animation_active = False  # 是否正在播放升级动画
         self.level_up_animation_start_time = 0  # 升级动画开始时间
-        self.level_up_animation_duration = 1000  # 升级动画持续时间（毫秒）
+        self.level_up_animation_duration = 3000  # 升级动画持续时间（毫秒）
 
     def _init_pause_surface(self) -> pygame.Surface:
         """初始化暂停界面。"""
@@ -209,12 +210,12 @@ class GameRenderer:
 
     def render_pause_screen(self, game_board: Board, current_tetromino: Tetromino, next_tetromino: Tetromino, score_manager: ScoreManager, particle_system: ParticleSystem) -> None:
         """渲染暂停界面。"""
-        self.render_game(game_board, current_tetromino, next_tetromino, score_manager, particle_system)
+        self.render_game(self.game_board, self.current_tetromino, self.next_tetromino, self.score_manager, self.particle_system)
         self.screen.blit(self.pause_surface, (0, 0))
 
     def render_game_over(self, game_board: Board, current_tetromino: Tetromino, next_tetromino: Tetromino, score_manager: ScoreManager, particle_system: ParticleSystem) -> None:
         """渲染游戏结束界面。"""
-        self.render_game(game_board, current_tetromino, next_tetromino, score_manager, particle_system)
+        self.render_game(self.game_board, self.current_tetromino, self.next_tetromino, self.score_manager, self.particle_system)
         self._draw_game_over_screen(score_manager)
 
     def _draw_game_over_screen(self, score_manager: ScoreManager) -> None:
@@ -278,10 +279,10 @@ class GameRenderer:
             return
 
         # 计算动画效果（例如，闪烁、缩放等）
-        alpha = int(255 * abs(pygame.math.sin(elapsed_time / self.level_up_animation_duration * pygame.math.PI * 2)))  # 闪烁效果
+        alpha = int(255 * abs(math.sin(elapsed_time / self.level_up_animation_duration * math.pi * 2)))  # 闪烁效果
 
         # 创建带透明度的文本 Surface
-        level_up_text = self.font.render("等级提升！", True, self.config.WHITE)
+        level_up_text = self.font.render("等级提升！", True, self.TEXT_COLOR)
         text_surface = pygame.Surface(level_up_text.get_size(), pygame.SRCALPHA)
         text_surface.blit(level_up_text, (0, 0))
         text_surface.set_alpha(alpha)

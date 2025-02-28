@@ -166,6 +166,9 @@ class TetrisGame:
                 # 播放升级音效
                 self.sound_manager.play_sound(SoundType.LEVEL_UP) # 添加这里
 
+                # 启动升级动画
+                self.renderer.start_level_up_animation()
+
             # 播放爆炸声音
             self.sound_manager.play_sound(SoundType.EXPLOSION)
 
