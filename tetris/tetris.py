@@ -11,31 +11,7 @@ from input_handler import InputHandler
 from game_state import GameState
 import util.ttools as ttools
 from util.profile_to_file import profile_to_file
-
-class SoundPool:
-    """声音池，用于管理多个声音副本。"""
-
-    def __init__(self, sound_path, size):
-        """
-        初始化 SoundPool。
-
-        Args:
-            sound_path: 要复制的声音文件的路径。
-            size: 声音池的大小（副本数量）。
-        """
-        self.sound_path = sound_path
-        self.pool = [pygame.mixer.Sound(sound_path) for _ in range(size)]
-        self.index = 0
-
-    def play(self):
-        """播放一个声音副本。"""
-        if not self.pool:
-            print("声音池为空！")  # 调试信息
-            return
-        sound = self.pool[self.index]
-        sound.play()
-        self.index = (self.index + 1) % len(self.pool)
-
+from sound_manager import SoundManager, SoundType  # 引入 SoundType
 
 class TetrisGame:
     """俄罗斯方块游戏主类。"""
@@ -81,11 +57,8 @@ class TetrisGame:
         max_channels = pygame.mixer.get_num_channels()
         print(f"pygame.mixer 支持的最大通道数为：{max_channels}")
 
-        # 初始化声音和声音池
-        self._init_sounds_and_pools()
-
-        # 初始化声音通道
-        self._init_channels()
+        # 初始化声音管理器
+        self.sound_manager = SoundManager(self.config)
 
     def _init_joystick(self):
         """初始化手柄。"""
@@ -96,60 +69,6 @@ class TetrisGame:
             print(f"手柄已连接: {self.joystick.get_name()}")
         else:
             print("未检测到手柄。")
-
-    def _init_sounds_and_pools(self):
-        """初始化游戏音效和声音池。"""
-        # 加载爆炸音效
-        self.explosion_sound_pool = self._load_sound_and_create_pool(
-            "explosion.wav", 5)
-
-        # 加载背景音乐
-        music_path = ttools.get_resource_path(os.path.join("assets/sounds", "tetris_music.mp3"))
-        if os.path.exists(music_path):
-            self.tetris_sound = pygame.mixer.Sound(music_path)
-        else:
-            print("背景音乐文件未找到。")
-            self.tetris_sound = None
-
-        # 加载旋转音效
-        self.rotate_success_sound_pool = self._load_sound_and_create_pool(
-            "tick.wav", 10)
-        self.rotate_fail_sound_pool = self._load_sound_and_create_pool(
-            "kick_wall.wav", 5)
-
-        # 加载加速下落音效
-        self.fast_fall_sound_pool = self._load_sound_and_create_pool(
-            "tick.wav", 10)
-
-    def _load_sound_and_create_pool(self, sound_file, pool_size):
-        """加载音效文件并创建声音池。"""
-        sound_path = ttools.get_resource_path(os.path.join("assets/sounds", sound_file))
-        if os.path.exists(sound_path):
-            sound_pool = SoundPool(sound_path, pool_size)
-            return sound_pool
-        else:
-            print(f"{sound_file} 音效文件未找到。")
-            return None
-
-    def _load_sound(self, sound_file):
-        """加载音效文件。"""
-        sound_path = ttools.get_resource_path(os.path.join("assets/sounds", sound_file))
-        if os.path.exists(sound_path):
-            return pygame.mixer.Sound(sound_path)
-        else:
-            print(f"{sound_file} 音效文件未找到。")
-            return None
-
-    def _init_channels(self):
-        """初始化声音通道。"""
-        self.music_channel = pygame.mixer.Channel(0)  # 背景音乐通道
-        self.explosion_channel = pygame.mixer.Channel(1)  # 消除声音通道
-        self.rotate_channel = pygame.mixer.Channel(2)  # 旋转声音通道
-        self.fast_fall_channel = pygame.mixer.Channel(3)  # 加速下落声音通道
-
-        # 设置背景音乐循环播放
-        if self.tetris_sound:
-            self.music_channel.play(self.tetris_sound, loops=-1)
 
     def _create_new_piece(self) -> Tetromino:
         """创建一个新的俄罗斯方块。"""
@@ -189,16 +108,22 @@ class TetrisGame:
         """处理方块的左右移动。"""
         time_since_last_move = current_time - self.last_move_time
         if time_since_last_move > self.move_delay:
+            moved = False  # 添加一个标志来检测是否发生了移动
             if self.left_key_pressed:
                 if not self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x - 1,
                                                     self.current_tetromino.y):
                     self.current_tetromino.x -= 1
                     self.last_move_time = current_time
+                    moved = True  # 发生了移动
             if self.right_key_pressed:
                 if not self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x + 1,
                                                      self.current_tetromino.y):
                     self.current_tetromino.x += 1
                     self.last_move_time = current_time
+                    moved = True  # 发生了移动
+
+            if moved:  # 如果发生了移动，则播放音效
+                self.sound_manager.play_sound(SoundType.MOVE_HORIZONTAL)
 
     def _move_piece_down(self, current_time: int) -> None:
         """处理方块的下落。"""
@@ -210,14 +135,16 @@ class TetrisGame:
                                                 self.current_tetromino.y + 1):
                 self.current_tetromino.y += 1
                 self.last_fall_time = current_time
-                if self.down_key_pressed and self.fast_fall_sound_pool:  # 播放加速下落音效
-                    self.fast_fall_channel.play(self.fast_fall_sound_pool.pool[self.fast_fall_sound_pool.index])  # 使用通道播放声音
-                    self.fast_fall_sound_pool.play()
+                if self.down_key_pressed:  # 播放加速下落音效
+                    self.sound_manager.play_sound(SoundType.FAST_FALL_LOOP)  # 修改这里
+                else:
+                    self.sound_manager.stop_sound(SoundType.FAST_FALL_LOOP)  # 停止播放
             else:
                 self._handle_piece_landed()
 
     def _handle_piece_landed(self) -> None:
         """处理方块落地后的逻辑。"""
+        self.sound_manager.stop_sound(SoundType.FAST_FALL_LOOP)  # 停止播放
         if not self.game_board.check_collision(self.current_tetromino, self.current_tetromino.x,
                                             self.current_tetromino.y):
             self.game_board.merge_piece(self.current_tetromino)
@@ -237,9 +164,7 @@ class TetrisGame:
                 print(f"升级！当前等级：{self.score_manager.level}")
 
             # 播放爆炸声音
-            if self.explosion_sound_pool:
-                self.explosion_channel.play(self.explosion_sound_pool.pool[self.explosion_sound_pool.index])  # 使用通道播放声音
-                self.explosion_sound_pool.play()
+            self.sound_manager.play_sound(SoundType.EXPLOSION)
 
             # 生成消除行的粒子效果
             for line in self.cleared_lines:
@@ -333,15 +258,11 @@ class TetrisGame:
                 for _ in range(3):
                     self.current_tetromino.rotate()
                 # 播放旋转失败音效
-                if self.rotate_fail_sound_pool:
-                    self.rotate_channel.play(self.rotate_fail_sound_pool.pool[self.rotate_fail_sound_pool.index])
-                    self.rotate_fail_sound_pool.play()
+                self.sound_manager.play_sound(SoundType.ROTATE_FAIL)
                 return False
 
         # 播放旋转成功音效
-        if self.rotate_success_sound_pool:
-            self.rotate_channel.play(self.rotate_success_sound_pool.pool[self.rotate_success_sound_pool.index])
-            self.rotate_success_sound_pool.play()
+        self.sound_manager.play_sound(SoundType.ROTATE_SUCCESS)
         return True
 
     def _try_wall_kick(self) -> bool:
@@ -363,9 +284,6 @@ class TetrisGame:
 
         return False  # 无法通过平移解决碰撞
 
-
 if __name__ == "__main__":
     game = TetrisGame()
-
-    
     game.game_loop()
