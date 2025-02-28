@@ -67,10 +67,19 @@ class GameRenderer:
         self.pause_surface = self._init_pause_surface()
         self.game_over_surface = self._init_game_over_surface()
 
+        # 初始化升级动画
+        self._init_level_up_animation()
+
+    def _init_level_up_animation(self):
+        """初始化升级动画相关的资源。"""
         # 初始化升级动画状态
         self.level_up_animation_active = False  # 是否正在播放升级动画
         self.level_up_animation_start_time = 0  # 升级动画开始时间
-        self.level_up_animation_duration = 2000  # 升级动画持续时间（毫秒）
+        self.level_up_animation_duration = 3000  # 升级动画持续时间（毫秒）
+
+        # 预先初始化 text_surface
+        self.level_up_text = self.larger_font.render("LEVEL UP", True, self.TEXT_COLOR)
+        self.text_surface = pygame.Surface(self.level_up_text.get_size(), pygame.SRCALPHA)
 
     def _init_pause_surface(self) -> pygame.Surface:
         """初始化暂停界面。"""
@@ -211,12 +220,12 @@ class GameRenderer:
 
     def render_pause_screen(self, game_board: Board, current_tetromino: Tetromino, next_tetromino: Tetromino, score_manager: ScoreManager, particle_system: ParticleSystem) -> None:
         """渲染暂停界面。"""
-        self.render_game(self.game_board, self.current_tetromino, self.next_tetromino, self.score_manager, self.particle_system)
+        self.render_game(game_board, current_tetromino, next_tetromino, score_manager, particle_system)
         self.screen.blit(self.pause_surface, (0, 0))
 
     def render_game_over(self, game_board: Board, current_tetromino: Tetromino, next_tetromino: Tetromino, score_manager: ScoreManager, particle_system: ParticleSystem) -> None:
         """渲染游戏结束界面。"""
-        self.render_game(self.game_board, self.current_tetromino, self.next_tetromino, self.score_manager, self.particle_system)
+        self.render_game(game_board, current_tetromino, next_tetromino, score_manager, particle_system)
         self._draw_game_over_screen(score_manager)
 
     def _draw_game_over_screen(self, score_manager: ScoreManager) -> None:
@@ -282,12 +291,11 @@ class GameRenderer:
         # 计算动画效果（例如，闪烁、缩放等）
         alpha = int(255 * abs(math.sin(elapsed_time / self.level_up_animation_duration * math.pi * 2)))  # 闪烁效果
 
-        # 使用预加载的更大字体
-        level_up_text = self.larger_font.render("LEVEL UP", True, self.TEXT_COLOR)
-        text_surface = pygame.Surface(level_up_text.get_size(), pygame.SRCALPHA)
-        text_surface.blit(level_up_text, (0, 0))
-        text_surface.set_alpha(alpha)
+        # 使用预先初始化的 text_surface
+        self.text_surface.fill((0, 0, 0, 0))  # 清空 Surface
+        self.text_surface.blit(self.level_up_text, (0, 0))
+        self.text_surface.set_alpha(alpha)
 
         # 绘制文本
-        text_rect = text_surface.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2))
-        self.screen.blit(text_surface, text_rect)
+        text_rect = self.text_surface.get_rect(center=(self.config.SCREEN_WIDTH // 2, self.config.SCREEN_HEIGHT // 2))
+        self.screen.blit(self.text_surface, text_rect)
