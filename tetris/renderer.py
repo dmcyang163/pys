@@ -38,9 +38,10 @@ class GameRenderer:
         info = pygame.display.Info()
         print(f"硬件加速：{bool(info.hw & pygame.HWSURFACE)}")
 
-        # 加载字体
-        font_size = int(config.SCREEN_WIDTH * self.FONT_SIZE_RATIO)
-        self.font = pygame.font.Font(ttools.get_resource_path(os.path.join("assets", "fonts", "MI_LanTing_Regular.ttf")), font_size)
+        # 加载字体文件
+        font_path = ttools.get_resource_path(os.path.join("assets", "fonts", "MI_LanTing_Regular.ttf"))
+        self.font = pygame.font.Font(font_path, int(config.SCREEN_WIDTH * self.FONT_SIZE_RATIO))  # 默认字体大小
+        self.larger_font = pygame.font.Font(font_path, int(config.SCREEN_WIDTH * self.FONT_SIZE_RATIO * 1.5))  # 更大的字体大小
 
         # 初始化方块缓存
         self.block_cache = {}  # 缓存不同颜色的方块 Surface
@@ -69,7 +70,7 @@ class GameRenderer:
         # 初始化升级动画状态
         self.level_up_animation_active = False  # 是否正在播放升级动画
         self.level_up_animation_start_time = 0  # 升级动画开始时间
-        self.level_up_animation_duration = 3000  # 升级动画持续时间（毫秒）
+        self.level_up_animation_duration = 2000  # 升级动画持续时间（毫秒）
 
     def _init_pause_surface(self) -> pygame.Surface:
         """初始化暂停界面。"""
@@ -281,8 +282,8 @@ class GameRenderer:
         # 计算动画效果（例如，闪烁、缩放等）
         alpha = int(255 * abs(math.sin(elapsed_time / self.level_up_animation_duration * math.pi * 2)))  # 闪烁效果
 
-        # 创建带透明度的文本 Surface
-        level_up_text = self.font.render("等级提升！", True, self.TEXT_COLOR)
+        # 使用预加载的更大字体
+        level_up_text = self.larger_font.render("LEVEL UP", True, self.TEXT_COLOR)
         text_surface = pygame.Surface(level_up_text.get_size(), pygame.SRCALPHA)
         text_surface.blit(level_up_text, (0, 0))
         text_surface.set_alpha(alpha)
