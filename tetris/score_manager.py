@@ -1,6 +1,6 @@
 import pygame
 import os
-import ttools
+import util.ttools as ttools
 from game_config import GameConfig
 
 class ScoreManager:

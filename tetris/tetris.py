@@ -1,8 +1,5 @@
-import sys
 import pygame
 import os
-import random
-from typing import List
 
 from game_config import GameConfig
 from tetromino import Tetromino
@@ -12,7 +9,7 @@ from particle import ParticlePool, ParticleSystem
 from renderer import GameRenderer
 from input_handler import InputHandler
 from game_state import GameState
-import ttools
+import util.ttools as ttools
 from util.profile_to_file import profile_to_file
 
 class SoundPool:

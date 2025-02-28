@@ -9,9 +9,7 @@ class InputHandler:
         self.game = game
 
     def handle_input(self) -> bool:
-        """
-        处理输入事件，包括键盘和手柄。
-        """
+        """处理输入事件，包括键盘和手柄。"""
         if self.game.game_state == GameState.GAME_OVER:
             pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.TEXTINPUT])
         else:
@@ -35,9 +33,7 @@ class InputHandler:
         return True
 
     def _handle_playing_event(self, event) -> None:
-        """
-        处理游戏进行中的键盘事件。
-        """
+        """处理游戏进行中的键盘事件。"""
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 self.game.left_key_pressed = True
@@ -60,9 +56,7 @@ class InputHandler:
                 self.game.down_key_pressed = False
 
     def _handle_paused_event(self, event) -> None:
-        """
-        处理暂停状态下的输入事件。
-        """
+        """处理暂停状态下的输入事件。"""
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_p:  # 按下 P 键恢复游戏
                 self.game.toggle_pause()
@@ -70,9 +64,7 @@ class InputHandler:
                 self.game.running = False
 
     def _handle_joystick_input(self) -> None:
-        """
-        处理手柄输入。
-        """
+        """处理手柄输入。"""
         # 获取手柄的摇杆和按钮状态
         axis_x = self.game.joystick.get_axis(0)  # 左摇杆的水平轴
         axis_y = self.game.joystick.get_axis(1)  # 左摇杆的垂直轴
@@ -107,24 +99,18 @@ class InputHandler:
             self.game.toggle_pause()
 
     def _handle_rotate(self) -> None:
-        """
-        处理方块的旋转。
-        """
+        """处理方块的旋转。"""
         self.game.handle_rotate()
 
     def _handle_game_over_event(self, event) -> None:
-        """
-        处理游戏结束时的输入事件。
-        """
+        """处理游戏结束时的输入事件。"""
         if event.type == pygame.KEYDOWN:
             self._handle_game_over_key(event.key)
         elif event.type == pygame.TEXTINPUT:
             self._handle_game_over_text(event.text)
 
     def _handle_game_over_key(self, key) -> None:
-        """
-        处理游戏结束时的键盘输入。
-        """
+        """处理游戏结束时的键盘输入。"""
         key_name = pygame.key.name(key).lower()
         if key_name in ['r', 'ｒ']:
             self.game.__init__()
@@ -134,9 +120,7 @@ class InputHandler:
             self.game.running = False
 
     def _handle_game_over_text(self, text) -> None:
-        """
-        处理游戏结束时的文本输入。
-        """
+        """处理游戏结束时的文本输入。"""
         text = text.lower()
         if text in ['r', 'ｒ']:
             self.game.__init__()

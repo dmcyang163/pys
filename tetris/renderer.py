@@ -1,14 +1,20 @@
 import pygame
 import os
-from typing import Tuple, List
+from typing import Tuple
 from game_config import GameConfig
 from tetromino import Tetromino
 from board import Board
 from score_manager import ScoreManager
-from particle import Particle
-import ttools
+import util.ttools as ttools
 from particle import ParticleSystem
 
+
+
+def set_wnd_on_top():
+    # 获取当前活动窗口的 ID
+    window_id = pygame.display.get_wm_info()["window"]
+    # 发送系统消息，将窗口置顶
+    os.system(f"xdotool windowactivate {window_id}")
 
 class GameRenderer:
     """渲染游戏元素到屏幕上。"""
@@ -27,6 +33,9 @@ class GameRenderer:
         self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.HWSURFACE | pygame.DOUBLEBUF)
         pygame.display.set_caption("俄罗斯方块")
 
+        set_wnd_on_top() # 尝试使用 SDL2 的 raise_() 方法
+
+        # 检查硬件加速
         info = pygame.display.Info()
         print(f"硬件加速：{bool(info.hw & pygame.HWSURFACE)}")
 
