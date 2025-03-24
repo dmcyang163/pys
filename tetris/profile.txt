@@ -1,0 +1,13 @@
+Timer unit: 1e-07 s
+
+Total time: 0 s
+
+Could not find file C:\Users\dmc_y\AppData\Local\Temp\ONEFIL~3\tetris.py
+Are you sure you are running this program from the same directory
+that you ran the profiler from?
+Continuing without the function's contents.
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   215                                           
+
