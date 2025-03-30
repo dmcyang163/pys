@@ -1,0 +1,7 @@
+
+nuitka --standalone --onefile --windows-console-mode=disable video2panorama.py
+
+nuitka --standalone --onefile --include-package=uuid video2panorama.py
+
+pyinstaller -F -w video2panorama.py
+pyinstaller -F video2panorama.py
