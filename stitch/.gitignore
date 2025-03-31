@@ -1,2 +1,5 @@
+*.build/
+*.dist/
 extracted_frames/
 *.jpg
+*.exe
