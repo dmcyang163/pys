@@ -3,5 +3,6 @@
 extracted_frames/
 *.jpg
 *.exe
+models/
 [nocase]
 *.mov

@@ -11,3 +11,6 @@ pyinstaller -F video2panorama.py
 netstat -ano | findstr "443"
 tasklist /fi "PID eq 8108"
 taskkill /f /pid 8108
+
+
+ThinPlateSpline
