@@ -18,7 +18,7 @@ def main(video, frames, output):
             processor.print_metadata()
         
         with timing("关键帧提取"):
-            processor.extract_key_frames(frames)
+            processor.extract_frames(frames)
         
         with timing("图像拼接"):
             stitcher = ImageStitcher(batch_size=5)
