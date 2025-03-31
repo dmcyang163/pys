@@ -5,3 +5,9 @@ nuitka --standalone --onefile --include-package=uuid video2panorama.py
 
 pyinstaller -F -w video2panorama.py
 pyinstaller -F video2panorama.py
+
+
+
+netstat -ano | findstr "443"
+tasklist /fi "PID eq 8108"
+taskkill /f /pid 8108
