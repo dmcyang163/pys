@@ -45,11 +45,11 @@ class VideoProcessor:
         返回:
             提取的帧总数
         """
-        # 检查文件夹是否存在
+        # 检查文件夹，如果存在，删除重建
         if os.path.exists(output_folder):
             # 如果存在，删除整个文件夹，创建新的文件夹
             shutil.rmtree(output_folder)
-            os.makedirs(output_folder)
+        os.makedirs(output_folder)
         
         frame_count = 0
         
