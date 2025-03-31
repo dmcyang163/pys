@@ -34,31 +34,44 @@ class VideoProcessor:
         cap.release()
         print("=" * 40 + "\n")
     
-    def extract_frames(self, output_folder: str, frame_types: List[str] = ['I']) -> int:
+    def extract_frames(self, output_folder: str, frame_types: List[str] = ['I', 'P'], 
+                    p_frame_ratio: float = 0.25) -> int:
         """
         提取指定类型的视频帧（I帧/P帧）并按解码顺序保存
         
         参数:
             output_folder: 输出文件夹路径
             frame_types: 要提取的帧类型列表，可选 'I' 和 'P'
+            p_frame_ratio: P帧提取比例 (0.0-1.0)，例如0.25表示每4帧P取1张
         
         返回:
             提取的帧总数
         """
         # 检查文件夹，如果存在，删除重建
         if os.path.exists(output_folder):
-            # 如果存在，删除整个文件夹，创建新的文件夹
             shutil.rmtree(output_folder)
         os.makedirs(output_folder)
         
         frame_count = 0
+        p_frame_counter = 0  # 用于 P 帧的计数器
         
         try:
             for packet in self.container.demux(video=0):
                 for frame in packet.decode():
                     frame_type = self._get_frame_type(frame)
-                    
+
                     if frame_type in frame_types:
+                        if frame_type == 'P':
+                            p_frame_counter += 1
+                            # 计算是否应该提取当前P帧
+                            if p_frame_ratio <= 0 or p_frame_ratio > 1:
+                                p_frame_ratio = 0.25  # 默认值
+                            
+                            # 计算提取间隔，至少为1
+                            extract_interval = max(1, int(1 / p_frame_ratio))
+                            if p_frame_counter % extract_interval != 0:
+                                continue
+                        
                         img = frame.to_ndarray(format='bgr24')
                         frame_name = f"{output_folder}/frame_{frame_count:04d}_{frame_type}.jpg"
                         
@@ -77,8 +90,9 @@ class VideoProcessor:
             raise
         
         logging.info(f"\n共提取 {frame_count} 帧（{'、'.join(frame_types)}帧）")
+        logging.info(f"P帧提取比例: {p_frame_ratio} (每{max(1, int(1/p_frame_ratio))}帧P取1张)")
         return frame_count
-
+    
     def _get_frame_type(self, frame) -> str:
         """获取帧类型（兼容所有PyAV版本）"""
         try:
